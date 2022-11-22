@@ -18,7 +18,7 @@ k_bound_hi = 1e4 #unit: min^-1: 1 per 6 ms, if too restrictive: increase to 1e6
 def lam1state_total(k,t):
     """ Model without 4sU dynamics
         t: time
-        kA: RNA degradation rate from state A
+        kD: mitochondrial RNA degradation rate of state A and B
         Derived in Sin et al, PLoS ONE 2016
     """
     kD = k['degradation']
@@ -48,9 +48,6 @@ def lam2state_total(k,t):
         kB: RNA degradation rate from state B
         Derived in Sin et al, PLoS ONE 2016: eq 19
     """
-#     kA = k[1]
-#     kAB = k[2]
-#     kB = k[3]
     kA = k['degradationA']
     kAB = k['transitionAB']
     kB = k['degradationB']
