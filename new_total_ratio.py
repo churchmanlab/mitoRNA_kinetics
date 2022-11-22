@@ -2,7 +2,8 @@
 # coding: utf-8
 
 # ## new_total_ratio.py
-# Author: Robert Ietswaart, 20200402
+# Author: Robert Ietswaart
+# date last updated: 20221122
 # License: BSD2.  
 # Python v3.7.4 
 # 
@@ -11,50 +12,35 @@
 # Starting point references: theory from McShane et al, Cell 2016. Sin et al, PLoS ONE, 2016.
 
 import numpy as np
+k_bound_lo = 1e-4 #unit: min^-1: 1 per 7 days
+k_bound_hi = 1e4 #unit: min^-1: 1 per 6 ms, if too restrictive: increase to 1e6
 
-def lam1state(k,t):
-    """ Model includes 4sU dynamics: derivations by Robert Ietswaart, N6p63-80
-        t: time
-        kout: 4sU/U exchange out rate
-        kA: RNA degradation rate from state A
-    """
-    kout = k[0]
-    kA = k[1]
-    Lambda = -kA/(kout-kA)*(1 - np.exp(-kout * t)) + \
-             kout/(kout-kA)*(1 - np.exp(-kA * t))
-    return Lambda
-
-def lam2state(k,t):
-    """ Model includes 4sU dynamics: derivations by Robert Ietswaart, N6p63-80
-        t: time
-        kout: 4sU/U exchange out rate
-        kA: RNA degradation rate from state A
-        kAB: transition rate from state A to state B
-        kB: RNA degradation rate from state B
-    """
-    kout = k[0]
-    kA = k[1]
-    kAB = k[2]
-    kB = k[3]
-    Phi = kB*(kA+kAB)*(kB+kAB-kout)/((kB+kAB)*(kA+kAB-kout)*(kB-kout))
-    Psi = kB*(kA-kB)*kout/((kB+kAB)*(kout-(kA+kAB))*(kA+kAB-kB))
-    Omega = kAB*kout*(kA+kAB)/((kB+kAB)*(kA+kAB-kB)*(kout-kB)) #1-Phi-Psi
-    Lambda = Phi*(1 - np.exp(-kout * t)) + \
-             Psi*(1 - np.exp(-(kA+kAB) * t)) + \
-             Omega*(1 - np.exp(-kB * t))
-    return Lambda
-
-def lam1state_toy_model(k,t):
+def lam1state_total(k,t):
     """ Model without 4sU dynamics
         t: time
         kA: RNA degradation rate from state A
         Derived in Sin et al, PLoS ONE 2016
     """
-    kA = k[1]
-    Lambda = 1 - np.exp(-kA * t)
+    kD = k['degradation']
+    Lambda = 1 - np.exp(-kD * t)
     return Lambda
 
-def lam2state_toy_model(k,t):
+def lam_ribo_1deg(k, t):
+    """ Fit of ribosome entry rate using ribosomal compartment 
+        t: time point (float)
+        kAB: mitoribosome entry rate
+        kD: mitochondrial RNA Degradation rate: set equal in state A and B
+    """
+    kD = k['degradation']
+    kAB = k['transitionAB']
+    eps = k_bound_lo #1e-16
+    if np.absolute(kAB) <= eps: #limit kAB = 0 case
+        Lambda = 1 - np.exp(-kD * t) * (1 + kD * t)
+    else:
+        Lambda = 1 + kD / kAB * np.exp(-(kD + kAB) * t) - (kAB + kD) / kAB * np.exp(-kD * t) 
+    return Lambda
+
+def lam2state_total(k,t):
     """ Model without 4sU dynamics
         t: time
         kA: RNA degradation rate from state A
@@ -62,24 +48,29 @@ def lam2state_toy_model(k,t):
         kB: RNA degradation rate from state B
         Derived in Sin et al, PLoS ONE 2016: eq 19
     """
-    kA = k[1]
-    kAB = k[2]
-    kB = k[3]
-    Ap = kB*(kA-kB)
-    Bp = kAB*(kA+kAB)
-    Lambda = Ap/(Ap+Bp)*(1 - np.exp(-(kA+kAB) * t)) + \
-             Bp/(Ap+Bp)*(1 - np.exp(-kB * t))
+#     kA = k[1]
+#     kAB = k[2]
+#     kB = k[3]
+    kA = k['degradationA']
+    kAB = k['transitionAB']
+    kB = k['degradationB']
+    Ap = kB * (kA - kB)
+    Bp = kAB * (kA + kAB)
+    Lambda = Ap / (Ap + Bp) * (1 - np.exp(-(kA + kAB) * t)) + \
+             Bp/(Ap + Bp) * (1 - np.exp(-kB * t))
     return Lambda
 
-def TCconv(k,t):
-    """ 4sU dynamics
+def lam2state_ribo(k,t):
+    """ Model without 4sU dynamics
         t: time
-        kin: 4sU in rate
-        kout: 4sU out rate derivation N6p184: TC = int_{0}^{t} L(s)ds
+        kA: RNA degradation rate from state A
+        kAB: transition rate from state A to state B
+        kB: RNA degradation rate from state B
+        Notebook N8p98
     """
-    kin = k[0]
-    kout = k[1]
-    TC = kin / kout *( 1 + (np.exp(-kout * t) - 1) / (kout * t) )
-    #old: wrong derivation again N6p183: this is L(t) = 4sU(t)/U(t)
-#     TC = kin * (1 - np.exp(-kout * t)) / kout 
-    return TC
+    kA = k['degradationA']
+    kAB = k['transitionAB']
+    kB = k['degradationB'] 
+    Lambda = 1 - kB / (kB - (kA + kAB)) * np.exp(-(kA + kAB) * t) + \
+             (kA + kAB) / (kB - (kA + kAB)) * np.exp(-kB * t)
+    return Lambda

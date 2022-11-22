@@ -2,7 +2,8 @@
 # coding: utf-8
 
 # ## aic.py
-# Author: Robert Ietswaart, 20200418
+# Author: Robert Ietswaart, Gyan Prakash
+# date last updated: 20221122
 # License: BSD2.  
 # Python v3.7.4 
 # 
@@ -11,21 +12,6 @@
 # Starting point references: theory from McShane et al, Cell 2016. Sin et al, PLoS ONE, 2016.
 
 import numpy as np
-
-def calc_rss(k, model, times, lam_obs):
-    """Calculate Residual sum of squares (RSS)
-       for input model
-       lam_obs : observed new to total ratio lambda
-       k : list with parameters of model
-       times : list with observed time points >0
-       model : function with model as argument #1 or 2 indicating the state of the model
-       """
-    lam_predict = model(k, times)
-    eps = 1e-16
-#     rss = sum((np.log(lam_predict + eps)-np.log(lam_obs + eps))**2)
-#     rss = (np.log(lam_predict + eps)-np.log(lam_obs + eps))
-    rss = lam_predict - lam_obs
-    return rss
 
 def _aic(n,k,rss):
     """first equation on page e7 of McShane et al
@@ -48,4 +34,20 @@ def calc_aic(n, rss1, rss2,k1,k2):
     sum_of_probs = np.exp((aic_min - aic1) / 2) + np.exp((aic_min - aic2) / 2)
     prob_aic1 = np.exp((aic_min - aic1) / 2) / sum_of_probs
     prob_aic2 = np.exp((aic_min - aic2) / 2) / sum_of_probs
+    return [prob_aic1, prob_aic2]
+
+def _aic_nocr(n,k,rss):
+    """Akaike Information Criterium without low number correction
+       k : number of parameters in model"""
+    aic = 2.0*k + n*np.log(rss/n)
+    return aic
+
+def calc_aic_nocr(n, rss1, rss2, k1, k2):
+    aic1 = _aic_nocr(n, k1, rss1) 
+    aic2 = _aic_nocr(n, k2, rss2)
+    aic_min = min(aic1, aic2)
+    sum_of_probs = np.exp((aic_min - aic1) / 2) + np.exp((aic_min - aic2) / 2)
+    prob_aic1 = np.exp((aic_min - aic1) / 2) / sum_of_probs
+    prob_aic2 = np.exp((aic_min - aic2) / 2) / sum_of_probs
+    
     return [prob_aic1, prob_aic2]
