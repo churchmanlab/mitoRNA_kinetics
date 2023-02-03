@@ -1,0 +1,1121 @@
+0. Handy lists
+
+
+# Experiments:
+TL4 TL5 TL6 TL9 NHC1 NHC2 TL10 TL11 TL12 NHC3 BK562 Bm3T3(Takara)
+SS1 (Truseq)
+# Samples:
+("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_IP" "15m_IP" "30m_IP" "60m_IP")
+("0m_tot" "30m_tot" "60m_tot" "0m_IP" "30m_IP" "60m_IP")
+("0m_WT" "0m_LRP" "30m_WT" "30m_LRP" "60m_WT" "60m_LRP" "120m_WT" "120m_LRP") # TL10
+("0m_WT" "30m_WT" "60m_WT" "120m_WT" "0m_LRP" "30m_LRP" "60m_LRP" "120m_LRP") # TL12
+("0m_IP_A" "30m_IP_A" "60m_IP_A" "0m_IP_B" "30m_IP_B" "60m_IP_B" "0m_tot_A" "30m_tot_A" "60m_tot_A" "0m_tot_B" "30m_tot_B" "60m_tot_B")
+("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_IP" "15m_IP" "30m_IP" "60m_IP")
+("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_poly" "15m_poly" "30m_poly" "60m_poly")
+("0m" "7m" "15m" "30m" "45m" "60m" "90m" "120m" "240m")
+("0m" "90m_4sU" "90m_5sG" "180m_4sU5sG")
+("0m" "90m_4sU" "90m_6sG_200" "90m_6sG_1000" "180m_4sU6sG_200" "180m_4sU6sG_1000") # TL7
+("Mito1" "Mito2" "Tot1" "Tot2")
+
+# Samples/Libs different format for looping
+"0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP"
+"0m 15m 30m 60m 120m 240m"
+"0m 7m 15m 30m 45m 60m 90m 120m 240m 0m_noC 120m_noC 240m_noC"
+"0m 15m_10 15m_25 15m_50 240m_10 240m_25 240m_50 0m_noC 240m_10_noC 240m_25_noC 240m_50_noC"
+"SimonK562_none_1 SimonK562_none_2 SimonK562_s6G_1 SimonK562_s6G_2 SimonK562_s4U_1 SimonK562_s4U_2"
+"J1 J2 J3 J4 J5 K1 K2 K3 K4 K5"
+"G1 G2 G3 G4 G5 H1 H2 H3 H4 H5"
+"DMSO 1_NHC 10_NHC 100_NHC 100_Molnu"
+"0m_IP_A 30m_IP_A 60m_IP_A 0m_IP_B 30m_IP_B 60m_IP_B 0m_tot_A 30m_tot_A 60m_tot_A 0m_tot_B 30m_tot_B 60m_tot_B"
+"Mito1 Mito2 Tot1 Tot2"
+TL6 "TL6_0m TL6_90m_4sU TL6_90m_6sG TL6_180m_4sU6sG"
+TL7 "0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000"
+
+# Samples/Libraries for making bamlists
+"no4sU_tot 0m_tot 15m_tot 30m_tot 60m_tot"
+"no4sU_IP_A 0m_IP_A 30m_IP_A 60m_IP_A"
+
+
+0. Make a SNP-masked genome (optional for if using a new cell type/cell line)
+# First map to a reference genome then use bam files as input below (more than one is best)
+
+CallSNPs_ModifyGenome.sh
+# Open and edit this script then run:
+sbatch ../Scripts/CallSNPs_ModifyGenome.sh 
+
+
+# to make matching ENS to GeneName file:
+# a. Run from SeqFiles folder
+script="GENCODE_gtf2ENStoGeneNameAndExonLengths.py"
+input="HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf" # K562_ensGRCh38_MTmod_dm6_ercc_cat.gtf 
+output1="HEK293T_ensGRCh38_ENStoGeneName.txt" # K562_ensGRCh38_dm6_ENStoGeneName.txt
+output2="HEK293T_ensGRCh38_ExonLengths.txt" # K562_ensGRCh38_dm6_ExonLengths.txt
+sbatch -p short -t 0-02:00 --mem=2G --wrap="python ../Scripts/${script} -i $input -o $output1 -O $output2"
+
+# b. 
+sbatch -p short -t 0-02:00 --mem=2G --wrap="Rscript ../Scripts/SumExonLengthsByTxptChooseMax.R"   # (input and output file names to be defined in script)
+
+
+
+
+
+1. Concatenate raw data
+
+
+# For data from BPF, first have to concatenate the files from each of the 4 lanes. Have to uncompress first: 
+bzip2 -dk *.bz2 (-k option retains original compressed file)
+# or
+for file in `ls`
+do
+gunzip -c $file > ${file/.fastq.gz/.fastq}
+done
+
+# Then combine data from the lanes
+Experiment='TL13' # TL11
+# Samps=("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_IP" "15m_IP" "30m_IP" "60m_IP")
+# Samps=("0m_WT" "0m_LRP" "30m_WT" "30m_LRP" "60m_WT" "60m_LRP" "120m_WT" "120m_LRP")
+# Samps=("0m_tot" "30m_tot" "60m_tot" "0m_IP" "30m_IP" "60m_IP")
+
+Samps=("0m_WT_tot_A" "30m_WT_tot_A" "60m_WT_tot_A" "0m_WT_tot_B" "30m_WT_tot_B" "60m_WT_tot_B" "0m_LRP_tot_A" "30m_LRP_tot_A" "60m_LRP_tot_A" "0m_LRP_tot_B" "30m_LRP_tot_B" "60m_LRP_tot_B" "0m_WT_IP_A" "30m_WT_IP_A" "60m_WT_IP_A" "0m_WT_IP_B" "30m_WT_IP_B" "60m_WT_IP_B" "0m_LRP_IP_A" "30m_LRP_IP_A" "60m_LRP_IP_A" "0m_LRP_IP_B" "30m_LRP_IP_B" "60m_LRP_IP_B")
+
+## Nextseq, 4 lanes
+# cat *_S${i}_L001_R1.fastq *_S${i}_L002_R1.fastq *_S${i}_L003_R1.fastq *_S${i}_L004_R1.fastq > ${Experiment}_${Samps[i-1]}_R1.fastq
+# cat *_S${i}_L001_R2.fastq *_S${i}_L002_R2.fastq *_S${i}_L003_R2.fastq *_S${i}_L004_R2.fastq > ${Experiment}_${Samps[i-1]}_R2.fastq
+
+#### or ####
+
+## Novaseq, 2 lanes
+for i in {1..24} # {6..8} # {1..8} 9
+do
+cat *_S${i}_L001_R1_001.fastq *_S${i}_L002_R1_001.fastq > ${Experiment}_${Samps[i-1]}_R1.fastq
+cat *_S${i}_L001_R2_001.fastq *_S${i}_L002_R2_001.fastq > ${Experiment}_${Samps[i-1]}_R2.fastq
+
+## Remove unzipped files as you go to save space
+rm *_S${i}_L001_R1_001.fastq
+rm *_S${i}_L001_R2_001.fastq
+rm *_S${i}_L002_R1_001.fastq
+rm *_S${i}_L002_R2_001.fastq
+rm *_S${i}_L003_R1_001.fastq
+rm *_S${i}_L003_R2_001.fastq
+rm *_S${i}_L004_R1_001.fastq
+rm *_S${i}_L004_R2_001.fastq
+done
+
+# Once all are complete recompress, and copy to working folder
+gzip ${Experiment}*fastq
+gzip */*fastq
+
+
+
+
+
+2. Trim adaptor
+
+script='TrimAdapter_Timelapse.sh'
+
+Expt="Bm3T3"
+# Libs=("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_IP" "15m_IP" "30m_IP" "60m_IP")
+# Libs=("0m_WT" "0m_LRP" "30m_WT" "30m_LRP" "60m_WT" "60m_LRP" "120m_WT" "120m_LRP")
+# Libs=("0m_WT_tot_A" "30m_WT_tot_A" "60m_WT_tot_A" "0m_WT_tot_B" "30m_WT_tot_B" "60m_WT_tot_B" "0m_LRP_tot_A" "30m_LRP_tot_A" "60m_LRP_tot_A" "0m_LRP_tot_B" "30m_LRP_tot_B" "60m_LRP_tot_B" "0m_WT_IP_A" "30m_WT_IP_A" "60m_WT_IP_A" "0m_WT_IP_B" "30m_WT_IP_B" "60m_WT_IP_B" "0m_LRP_IP_A" "30m_LRP_IP_A" "60m_LRP_IP_A" "0m_LRP_IP_B" "30m_LRP_IP_B" "60m_LRP_IP_B") # TL13
+# Libs=("0m_T" "15m_T" "30m_T" "60m_T" "120m_T" "0m_U" "15m_U" "30m_U" "60m_U" "120m_U") # BK562
+# Fastqs=("T1-tot" "T2-tot" "T3-tot" "T4-tot" "T5-tot" "U1-tot" "U2-tot" "U3-tot" "U4-tot" "U5-tot") # BK562
+Libs=("0m_G" "15m_G" "30m_G" "60m_G" "120m_G" "0m_H" "15m_H" "30m_H" "60m_H" "120m_H") # BK562, Bm3T3
+Fastqs=("G1-tot" "G2-tot" "G3-tot" "G4-tot" "G5-tot" "H1-tot" "H2-tot" "H3-tot" "H4-tot" "H5-tot") # Bm3T3
+
+# Expt="NHC3"
+# Libs=("0m_tot" "30m_tot" "60m_tot" "0m_IP" "30m_IP" "60m_IP")
+
+type="Takara" # Takara Truseq
+for i in {0..9} # Change according to number of samples
+do
+# sbatch -e logs/Trim_${Libs[i]}.err -o logs/Trim_${Libs[i]}.log ../Scripts/${script} ${Expt}_${Libs[i]} ${Expt}_${Libs[i]} ${type} 
+sbatch -e logs/Trim_${Libs[i]}.err -o logs/Trim_${Libs[i]}.log ../Scripts/${script} ${Expt}_${Libs[i]} ${Fastqs[i]} ${type} 
+done
+
+
+
+3. Map
+
+script='MapForGRANDSLAM.sh'
+
+Exp="TL12" # Bm3T3
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP"
+Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP" #TL10 TL12
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B"
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP" # NHC3
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+# Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+# 
+MapMethod="t5MMinformed5" #t5MTMMinformed6' null t5MMinformed4 t5MTMMinformed6
+data="HEK" # Hela K562 mouse HEK
+seqmeth="paired" # single paired
+map_rRNA="no"
+
+for lib in $Libs
+do
+sbatch -e logs/Mapfilter_${lib}_${MapMethod}_${map_rRNA}.err -o logs/Mapfilter_${lib}_${MapMethod}_${map_rRNA}.log ../Scripts/${script} ${Exp}_${lib} $MapMethod $data $seqmeth $map_rRNA
+done
+
+
+
+4(opt). Count reads on features
+
+script="run_featureCounts_Timelapse.sh"
+
+Exp="TL8"
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP" # TL11
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP" # TL12
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13 HEK
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP" # NHC13
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP" # TL8
+# Libs="0m 7m 15m 30m 45m 60m 90m 120m 240m" # TL3
+# Libs="0m 15m 30m 60m 120m 240m" # TL1
+Libs="Mito1 Mito2 Tot1 Tot2" # SS1
+
+MapMethod='t5MTMMinformed6' # t5MTMMinformed6 MMinformed4 MTMMinformed6 MMinformed5 t5MMinformed4
+suffix="Aligned.sortedByCoord.noSpike.bam" # Aligned.sortedByCoord.noSpike.bam MT.bam Aligned.out.bam
+ref='Hela' # Hela K562 HEK
+type='multi'
+seqmeth="paired" # single paired
+# 
+for lib in $Libs
+do
+sbatch -e logs/FeatureCounts_${lib}_${MapMethod}.err -o logs/FeatureCounts_${lib}_${MapMethod}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib} $MapMethod $suffix $ref $type $seqmeth
+# sbatch -e logs/FeatureCounts_${lib}_${MapMethod}.err -o logs/FeatureCounts_${lib}_${MapMethod}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${lib} $MapMethod $suffix $ref $type $seqmeth
+done
+
+
+
+# Combine featureCounts files
+# First add headers
+Exp="SS1" # SStot1 SStot2
+Experiment="SS1" # K562_K TL5 TL4 SStot1 TL9 SStot2 K562_50 NHC2
+MapMethod="t5MTMMinformed6" # t5MTMMinformed6 MTMMinformed6
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP"
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13 HEK
+# Libs="0m 7m 15m 30m 45m 60m 90m 120m 240m" # TL3
+# Libs="0m 15m 30m 60m 120m 240m" # TL1
+Libs="Mito1 Mito2 Tot1 Tot2" # SS1
+
+for lib in $Libs
+do
+# sed -i '1i\GeneID\t'${Exp}_${lib} ${Exp}_${lib}_${MapMethod}_featureCounts_multi.txt
+# sed -i '1i\GeneID\t'${Exp}_${lib} ${Exp}_${lib}_${MapMethod}_featureCounts_CDSmulti.txt
+sed -i '1i\GeneID\t'${lib} ${lib}_${MapMethod}_featureCounts_multi.txt
+sed -i '1i\GeneID\t'${lib} ${lib}_${MapMethod}_featureCounts_CDSmulti.txt
+done
+sed -i '1i\GeneNum\tLength' featureCounts_Length.txt
+sed -i '1i\GeneNum\tLength' featureCounts_CDS_Length.txt
+
+typelist="multi CDSmulti" # unique multi_noDups unique_noDups CDSmulti"
+MapMethod="MTMMinformed6" # MTMMinformed6
+# LibList=("TL13_0m_WT_tot_A" "TL13_30m_WT_tot_A" "TL13_60m_WT_tot_A" "TL13_0m_WT_tot_B" "TL13_30m_WT_tot_B" "TL13_60m_WT_tot_B" "TL13_0m_LRP_tot_A" "TL13_30m_LRP_tot_A" "TL13_60m_LRP_tot_A" "TL13_0m_LRP_tot_B" "TL13_30m_LRP_tot_B" "TL13_60m_LRP_tot_B" "TL13_0m_WT_IP_A" "TL13_30m_WT_IP_A" "TL13_60m_WT_IP_A" "TL13_0m_WT_IP_B" "TL13_30m_WT_IP_B" "TL13_60m_WT_IP_B" "TL13_0m_LRP_IP_A" "TL13_30m_LRP_IP_A" "TL13_60m_LRP_IP_A" "TL13_0m_LRP_IP_B" "TL13_30m_LRP_IP_B" "TL13_60m_LRP_IP_B")
+# LibList=("TL4_0m" "TL4_7m" "TL4_15m" "TL4_30m" "TL4_45m" "TL4_60m" "TL4_90m" "TL4_120m" "TL4_240m") # TL3
+# LibList=("TL1_0m" "TL1_15m" "TL1_30m" "TL1_60m" "TL1_120m" "TL1_240m") # TL1
+LibList=("Mito1" "Mito2" "Tot1" "Tot2") # SS1
+
+for type in $typelist
+do
+if [ "$type" = "CDSmulti" ]
+then
+sep="_CDS_"
+else
+sep="_"
+fi
+paste <(awk '{print $1 "\t"$2}' ${LibList[0]}_${MapMethod}_featureCounts_${type}.txt) <(awk '{print $2}' ${LibList[1]}_${MapMethod}_featureCounts_${type}.txt) <(awk '{print $2}' ${LibList[2]}_${MapMethod}_featureCounts_${type}.txt) <(awk '{print $2}' ${LibList[3]}_${MapMethod}_featureCounts_${type}.txt) <(awk '{print $2}' featureCounts${sep}Length.txt) > ${Exp}_${MapMethod}_featureCounts_${type}.txt 
+done
+
+# Move to personal computer and add gene names
+# Open and modify, then run AddGeneName_RPKMS_customGTF.R
+
+
+4. Extract reads subsets
+
+script="ExtractMitoReadsForGRANDSLAM.sh"
+
+Expt='TL12' # BK562
+
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP" # TL11
+Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP" #TL12 TL10
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP" # NHC3
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP" # TL8 TL9 TL11
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+# Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+
+
+MapMethod='t5MMinformed5' # MTMMinformed6 t5MTMMinformed6 t5MMinformed5 t5MMinformed4
+seqmeth='paired'
+Set='Nuc' # Nuc MT(this will make MT and MTnorRNA)
+ref='HEK' # mouse Hela K562 HEK
+for lib in $Libs
+do
+sbatch -e logs/ExtractMito_${lib}_${MapMethod}.err -o logs/ExtractMito_${lib}_${MapMethod}.log ../Scripts/${script} ${Expt}_${lib} $MapMethod $seqmeth $Set $ref
+done
+
+
+
+4opt. Downsample mito rRNA reads only (might be needed for GS to be able to handle mitoribo IP samples)
+
+script="Downsample_MTrRNA.sh"
+
+Expt='TL13'
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP" # NH3
+Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP" # TL8 TL9 TL11
+
+MapMethod='t5MTMMinformed6'
+include='RNR2' # both RNR2
+
+for lib in $Libs
+do
+sbatch -e logs/DSrRNA_${lib}.err -o logs/DSrRNA_${lib}.log ../Scripts/Downsample_MTrRNA.sh ${Expt}_${lib} $MapMethod $include
+done
+
+
+
+5a. Make bamlists for GRANDSLAM
+
+Exp="TL12" # Bm3T3
+# suffixes="IP tot" # WT_tot_A WT_tot_B WT_IP_A WT_IP_B LRP_tot_A LRP_tot_B LRP_IP_A LRP_IP_B
+# suffixes="WT_tot_A WT_tot_B WT_IP_A WT_IP_B LRP_tot_A LRP_tot_B LRP_IP_A LRP_IP_B"
+# suffixes="G H" # Bm3T3
+# suffixes="T U" # BK562
+suffixes="LRP WT" # TL10
+
+MapMethod="t5MMinformed5"
+Set="Nuc" # MT MTnorRNA Nuc MTdsrRNA MTdsRNR2 MTnorRNA_1orLessOtherMM_sort
+
+for suffix in $suffixes
+do
+Experiment=${Exp}_${suffix} # TL5_poly
+bglib="0m_${suffix}"
+no4sUlib="no4sU_${suffix}"
+# Copy 0m sample to make 4sU sample for comparison in GS
+cp ${Exp}_${bglib}_${MapMethod}_${Set}.bam ${Exp}_${no4sUlib}_${MapMethod}_${Set}.bam
+cp ${Exp}_${bglib}_${MapMethod}_${Set}.bam.bai ${Exp}_${no4sUlib}_${MapMethod}_${Set}.bam.bai
+
+# Make bamlist
+rm ${Experiment}_${Set}_${MapMethod}.bamlist
+touch ${Experiment}_${Set}_${MapMethod}.bamlist
+
+# Libraries="no4sU_${suffix} 0m_${suffix} 30m_${suffix} 60m_${suffix}" # TL13
+# Libraries="no4sU_${suffix} 0m_${suffix} 15m_${suffix} 30m_${suffix} 60m_${suffix}" # TL8 TL9 TL11
+# Libraries="no4sU_${suffix} 0m_${suffix} 15m_${suffix} 30m_${suffix} 60m_${suffix} 120m_${suffix}" # BK562 Bm3T3
+Libraries="no4sU_${suffix} 0m_${suffix} 30m_${suffix} 60m_${suffix} 120m_${suffix}" # TL10 TL12
+
+# Libraries="no4sU_WT 0m_WT 30m_WT 60m_WT 120m_WT" #TL12
+# Libraries="no4sU_LRP 0m_LRP 30m_LRP 60m_LRP 120m_LRP"
+# Libraries="no4sU_tot 0m_tot 15m_tot 30m_tot 60m_tot"
+# Libraries="no4sU_IP 0m_IP 15m_IP 30m_IP 60m_IP"
+# Libraries="no4sU_IP 0m_IP 30m_IP 60m_IP"
+# Libraries="no4sU_tot 0m_tot 30m_tot 60m_tot"
+# Libraries="no4sU 0m 7m 15m 30m 45m 60m 90m 120m 240m" # TL3, TL4
+# Libraries="no4sU 0m 15m 30m 60m 120m 240m" # TL1
+# Libraries="no4sU_B 0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"
+# Libraries="no4sU_A 0m_A 15m_A 30m_A 45m_A 60m_A 90m_A 120m_A 240m_A"
+for lib in $Libraries
+do
+echo "${Exp}_${lib}_${MapMethod}_${Set}.bam" >> ${Experiment}_${Set}_${MapMethod}.bamlist
+done 
+
+done
+
+
+
+
+
+
+6a. Run GRANDSLAM (adjust sbatch parameters depending on size of data and whether making cit etc)
+*** If there is a javaHeapSpace error, may need to downsample the mito rRNA reads (especially for mitoribo IP experiments): use Downsample_MTrRNA.sh
+
+script="GRANDSLAM.sh"
+
+Exp="TL12"
+# Suffixes="WT_tot_A WT_tot_B WT_IP_A WT_IP_B LRP_tot_A LRP_tot_B LRP_IP_A LRP_IP_B"
+# Suffixes="tot IP"
+Suffixes="LRP WT"
+# Suffixes="tot poly" # TL5
+# Suffixes="G H" # Bm3T3
+# Suffixes="T U" # BK562
+
+MapMethod="t5MMinformed5" # t5MTMMinformed6
+data="HEK" # HEK Hela mouse K562
+Set="Nuc" # Nuc MT NucRates MTrates (tells it which GS parameters to use)
+set="Nuc" # MT MTdsRNR2 MTnorRNA_1orLessOtherMM_sort Nuc (For file choosing and naming)
+makeCIT="yes"
+dirName="" # PcMod1 PcTop2000 (will only be used in the second iteration of GS)
+# sbatch parameters
+job="short" # medium
+time="0-12:00" # 0-30:00
+
+for suffix in $Suffixes
+do
+ExpName=${Exp}_${suffix}_${set} # TL7_MT # NHC2_A_MT NHC2_A_Nuc TL11_IP_MTdsRNR2 TL11_tot_MTnorRNA_1orLessOtherMM_sort TL12_WT_MT
+sbatch -p $job -t $time ../Scripts/${script} $ExpName $MapMethod $data $Set $makeCIT $dirName
+done
+
+
+
+5b. Pull out subset of Nuc reads for mismatch scripts
+
+
+Exp="TL10"
+MapMethod="t5MMinformed5" # t5MMinformed5
+Libs="60m_WT" # "0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP"
+fromExpt="K562"
+n=2000
+for lib in $Libs
+do
+sbatch -p short -t 0-03:00 --wrap="samtools view -@ 3 -b -o ${Exp}_${lib}_${MapMethod}_NucTop${n}turnover.bam -L /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Top${n}_Nucturnover_${fromExpt}.bed ${Exp}_${lib}_${MapMethod}_Aligned.sortedByCoord.out.bam"
+done
+# And to get an idea of counts (want ~500000, but this vastly overestimates when comes through after filtering)
+# for lib in $Libs
+# do
+# sbatch -p short -t 0-00:10 --wrap="samtools view -c -F 0x100 ${Exp}_${lib}_${MapMethod}_NucTop${n}turnover.bam > ${Exp}_${lib}_${MapMethod}_${n}genes_readcount.txt"
+# done
+
+
+
+
+
+6b. Filter reads and put in correct format for running mismatch scripts
+
+script="ProcessAlignments_TimelapseSeq_withDups.sh"
+
+Exp="TL4" #TL5 TL4 SStot1 TL9 SStot2 NHC1 NHC3 TL7 Bm3T3
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP"
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP"
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP"
+# Libs="0m_A 15m_A 30m_A 45m_A 60m_A 90m_A 120m_A 240m_A 0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"
+# Libs="0m 90m_4sU 90m_6sG 180m_4sU6sG" # TL6
+# Libs="0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000" # TL7
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+# Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+Libs="240m"
+
+MapMethod='t5MTMMinformed6'
+Set='MTnorRNA' # MT MTnorRNA Nuc NucTop2000turnover NucTop4000turnover MTdsRNR2
+data="Hela" # Hela HEK K562 mouse
+seqmeth="paired"
+
+for lib in $Libs
+do
+sbatch -e logs/ProcAlmts_${lib}_${MapMethod}_${Set}.err -o logs/ProcAlmts_${lib}_${MapMethod}_${Set}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib} $MapMethod $Set $data $seqmeth
+done
+
+
+
+7b. Mismatch scripts, set up to run jobs in parallel
+
+### IMPORTANT: for this section run each block in series, waiting until one is finished and checking the log (slurm) files before moving on
+
+# Run from directory one up from where tmp files are written to in above step
+
+Exp="TL4" #TL5 TL4 SStot1 TL9 SStot2 NHC1
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP"
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A" # TL13_A
+# Libs="0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13_B
+# Libs="0m 90m_4sU 90m_6sG 180m_4sU6sG" # TL6
+# Libs="0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000" # TL7
+# Exp="NHC3" #TL5 TL4 SStot1 TL9 SStot2 NHC1
+# Libs="0m_tot 30m_tot 60m_tot 0m_IP 30m_IP 60m_IP"
+# Libs="0m_LRP_IP_B 60m_LRP_IP_B" # temp
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+# Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+Libs="240m"
+
+dirName="MTnorRNA_t5MTMMinformed6_withDups" # MT_MMinformed4_withDups Nuc_MMinformed4_withDups MT_MTMMinformed6_withDups Nuc_MTMMinformed6_withDups MTnorRNA_t5MTMMinformed6_withDups MT_t5MTMMinformed6_withDups MT_t5MTMMinformed6_withDups NucTop2000_t5MMinformed5_withDups
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP" # TL3, TL4
+# Libs="0m_A 15m_A 30m_A 45m_A 60m_A 90m_A 120m_A 240m_A 0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"
+genome="Hela"
+
+## ** Be sure fasta path in findMismatches_complete_4types_variableGenome.R matches reference used for mapping  - e.g. if the reference is changed at any point *** ##
+
+# Call mismatches per read: this calls a script to ID and record TC, CT, GA, and AG, and has options for which genome to use (findMismatches_complete_4types_variableGenome.R)
+script="submit_parallel_findMM_MC_batchSubmit.sh"
+for lib in $Libs
+do
+sbatch -e logs/submit_parallel_${lib}_${dirName}.err -o logs/submit_parallel_${lib}_${dirName}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName} $genome
+done
+
+ls -l slurm*
+rm slurm*
+
+script="test_submitMM_batchSubmit.sh"
+for lib in $Libs
+do
+/n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName}
+done
+
+### --> If there are files left, rerun above step with 
+## first
+# rm -r *withDups/*analysis
+# # then
+# script="submit_parallel_findMM_MC_batchSubmit_rerun.sh"
+# for lib in $Libs
+# do
+# sbatch -e logs/submit_parallel_rerun_${lib}_${dirName}.err -o logs/submit_parallel_rerun_${lib}_${dirName}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName} $genome
+# done
+
+# Concatenate tmp files
+for lib in $Libs
+do
+sbatch -p short -t 0-01:00 -e cat_${lib}.err --wrap="cat ${Exp}_${lib}_${dirName}/tmp*MM.bed > ${Exp}_${lib}_${dirName}/reads.MM.bed" 
+done
+
+ls -l cat*
+rm cat*
+for lib in $Libs
+do
+rm ${Exp}_${lib}_${dirName}/tmp*
+done
+
+
+
+# Sort read.MM.bed
+for lib in $Libs
+do
+sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_sortReads_byName_batchSubmit.sh ${Exp}_${lib}_${dirName}
+done
+
+ls -l slurm*
+rm slurm*
+
+# Remove unsorted file
+for lib in $Libs
+do
+rm ${Exp}_${lib}_${dirName}/reads.MM.bed
+done
+
+# Remove any singletons or out of order reads that will mess up next step
+# replace spaces with semicolons so uniq only uses tab as field separator, reverse lines, print ALL duplicated lines (-D), using 20 characters (-w 20) after skipping the first 23 fields and next 2 characters (-f23 -s 2), which are 2/ or 1/. Reverse back, replace semicolons with spaces
+for lib in $Libs
+do
+sbatch -p short -t 0-12:00 --wrap="cat ${Exp}_${lib}_${dirName}/reads.MM.bed_sort.bed | sed -e 's/ /;/g'| rev | uniq -D -f23 -s 2 -w 20 | rev | sed -e 's/;/ /g' > ${Exp}_${lib}_${dirName}/reads.MM.bed_sort_noUniq.bed"
+done
+
+ls -l sl*
+
+for lib in $Libs
+do
+rm ${Exp}_${lib}_${dirName}/reads.MM.bed_sort.bed
+mv ${Exp}_${lib}_${dirName}/reads.MM.bed_sort_noUniq.bed ${Exp}_${lib}_${dirName}/reads.MM.bed_sort.bed
+done
+
+
+
+# Now combine reads to call mismatches per fragment
+script="run_MM_per_fragment_MC_batchSubmit.sh"
+for lib in $Libs
+do
+sbatch -e logs/run_MM_per_frag_${Exp}_${lib}_${dirName}.err -o logs/run_MM_per_frag_${Exp}_${lib}_${dirName}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName}
+done
+
+
+
+
+ls -l slurm*
+rm slurm*
+
+# Test to make sure they all ran through
+script="test_MM_per_F.sh"
+for lib in $Libs
+do
+/n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName}
+done
+
+# Concatenate tmp files
+for lib in $Libs
+do
+sbatch -p short -t 0-01:00 --wrap="cat ${Exp}_${lib}_${dirName}/tmp*fragments.bed > ${Exp}_${lib}_${dirName}/reads_MM.fragments.bed" 
+done
+
+ls -l slurm*
+rm slurm*
+for lib in $Libs
+do
+rm ${Exp}_${lib}_${dirName}/tmp*
+done
+
+# Sort fragments
+for lib in $Libs
+do
+sbatch -p short -t 0-03:00 --mem=50G --wrap="bedtools sort -i ${Exp}_${lib}_${dirName}/reads_MM.fragments.bed > ${Exp}_${lib}_${dirName}/reads_MM.fragments.sort.bed"
+done
+
+ls -l slurm*
+rm slurm*
+
+# Remove unsorted file
+for lib in $Libs
+do
+rm ${Exp}_${lib}_${dirName}/reads_MM.fragments.bed
+done
+
+
+8. Get stats on mismatches: Get overall mismatch counts and plot normalized counts
+ (this step is optional, not taken as input anywhere)
+
+# Count all mismatches
+Exp="BK562"
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+
+script="run_countMM_MC.sh"
+for lib in $Libs
+do
+sbatch -o ${Exp}_${lib}_${dirName}/${lib}_mismatches.count /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib}_${dirName}
+done
+
+# Remove first line of files
+for lib in $Libs
+do
+sed -i '1d' ${Exp}_${lib}_${dirName}/${lib}_mismatches.count
+done
+
+# Combine samples
+Exp="Bm3T3"
+outExp="Bm3T3"
+# lib=("0m_WT_tot_A" "30m_WT_tot_A" "60m_WT_tot_A" "0m_LRP_tot_A" "30m_LRP_tot_A" "60m_LRP_tot_A" "0m_WT_IP_A" "30m_WT_IP_A" "60m_WT_IP_A" "0m_LRP_IP_A" "30m_LRP_IP_A" "60m_LRP_IP_A") # TL13_A
+# lib=("0m_WT_tot_B" "30m_WT_tot_B" "60m_WT_tot_B" "0m_LRP_tot_B" "30m_LRP_tot_B" "60m_LRP_tot_B" "0m_WT_IP_B" "30m_WT_IP_B" "60m_WT_IP_B" "0m_LRP_IP_B" "30m_LRP_IP_B" "60m_LRP_IP_B") # TL13_B
+# lib=("0m_tot" "15m_tot" "30m_tot" "60m_tot" "0m_IP" "15m_IP" "30m_IP" "60m_IP")
+# lib=("0m_WT" "0m_LRP" "30m_WT" "30m_LRP" "60m_WT" "60m_LRP" "120m_WT" "120m_LRP")
+# lib=("0m" "90m_4sU" "90m_6sG" "180m_4sU6sG") # TL6
+# lib=("0m" "90m_4sU" "90m_6sG_200" "90m_6sG_1000" "180m_4sU6sG_200" "180m_4sU6sG_1000") # TL7
+lib=("0m_G" "15m_G" "30m_G" "60m_G" "120m_G" "0m_H" "15m_H" "30m_H" "60m_H" "120m_H") # Bm3T3
+# lib=("0m_T" "15m_T" "30m_T" "60m_T" "120m_T" "0m_U" "15m_U" "30m_U" "60m_U" "120m_U") # BK562
+paste <(awk 'BEGIN { FS = "=" } {print $1 "\t"$2}' ${Exp}_${lib[0]}_${dirName}/${lib[0]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[1]}_${dirName}/${lib[1]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[2]}_${dirName}/${lib[2]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[3]}_${dirName}/${lib[3]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[4]}_${dirName}/${lib[4]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[5]}_${dirName}/${lib[5]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[6]}_${dirName}/${lib[6]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[7]}_${dirName}/${lib[7]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[8]}_${dirName}/${lib[8]}_mismatches.count) <(awk 'BEGIN { FS = "=" } {print $2}' ${Exp}_${lib[9]}_${dirName}/${lib[9]}_mismatches.count) > ${outExp}_${dirName}_mismatches.count 
+
+
+# Move to computer, run MismatchCount.R
+
+
+9. Make shortened files as input for script to make n,k matrices
+
+script="run_AWKforTCperTplus.sh"
+
+Exp='TL4' # SStot2 NHC1
+# Libs="0m 90m_4sU 90m_6sG 180m_4sU6sG" # TL6
+# Libs="0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000" # TL7
+# Libs="0m_WT 0m_LRP 30m_WT 30m_LRP 60m_WT 60m_LRP 120m_WT 120m_LRP" # TL12
+# Libs="0m_A 15m_A 30m_A 45m_A 60m_A 90m_A 120m_A 240m_A 0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"
+# Libs="0m_IP_A 30m_IP_A 60m_IP_A 0m_IP_B 30m_IP_B 60m_IP_B 0m_tot_A 30m_tot_A 60m_tot_A 0m_tot_B 30m_tot_B 60m_tot_B"
+ # "DMSO 1_NHC 10_NHC 100_NHC 100_Molnu"
+# Libs="0m_WT_tot_A 30m_WT_tot_A 60m_WT_tot_A 0m_LRP_tot_A 30m_LRP_tot_A 60m_LRP_tot_A 0m_WT_IP_A 30m_WT_IP_A 60m_WT_IP_A 0m_LRP_IP_A 30m_LRP_IP_A 60m_LRP_IP_A 0m_WT_tot_B 30m_WT_tot_B 60m_WT_tot_B 0m_LRP_tot_B 30m_LRP_tot_B 60m_LRP_tot_B 0m_WT_IP_B 30m_WT_IP_B 60m_WT_IP_B 0m_LRP_IP_B 30m_LRP_IP_B 60m_LRP_IP_B" # TL13
+# Libs="0m_G 15m_G 30m_G 60m_G 120m_G 0m_H 15m_H 30m_H 60m_H 120m_H" # Bm3T3
+# Libs="0m_T 15m_T 30m_T 60m_T 120m_T 0m_U 15m_U 30m_U 60m_U 120m_U" # BK562
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_poly 15m_poly 30m_poly 60m_poly" # BK562
+Libs="240m"
+MapMethod='MTnorRNA_t5MTMMinformed6_withDups' # MT_MTMMinformed6_withDups MT_t5MTMMinformed6_withDups NucTop2000_t5MMinformed5_withDups MTnorRNA_t5MMinformed4_withDups
+seqmeth='paired'
+second="GA" # GA CT  * For older datasets this column isn't there. Have to use GA, but ignore the GA output (it's really the column for 0/1 No/Yes TtoC mismatch
+Set="MTnorRNA" # NucTop2000 MTnorRNA MT
+
+for lib in $Libs
+do
+sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} ${Exp}_${lib} $MapMethod $seqmeth $second $Set
+done
+
+
+10. Get mismatch stats per fragment and make n,k matrices
+
+mkdir MMfrequency
+script="MismatchFrequencyTCandGAorCT.R"
+Exp="TL3"
+# Libs="0m_WT_tot_A,30m_WT_tot_A,60m_WT_tot_A,0m_LRP_tot_A,30m_LRP_tot_A,60m_LRP_tot_A,0m_WT_IP_A,30m_WT_IP_A,60m_WT_IP_A,0m_LRP_IP_A,30m_LRP_IP_A,60m_LRP_IP_A,0m_WT_tot_B,30m_WT_tot_B,60m_WT_tot_B,0m_LRP_tot_B,30m_LRP_tot_B,60m_LRP_tot_B,0m_WT_IP_B,30m_WT_IP_B,60m_WT_IP_B,0m_LRP_IP_B,30m_LRP_IP_B,60m_LRP_IP_B" # TL13
+# Libs="0m_tot,15m_tot,30m_tot,60m_tot,0m_IP,15m_IP,30m_IP,60m_IP" # TL8 TL9 TL11
+
+# Libs="0m,90m_4sU,90m_6sG,180m_4sU6sG" # TL6
+# Libs="0m,90m_4sU,90m_6sG_200,90m_6sG_1000,180m_4sU6sG_200,180m_4sU6sG_1000" # TL7
+# Libs="0m_tot,15m_tot,30m_tot,60m_tot,0m_IP,15m_IP,30m_IP,60m_IP"
+# Libs="0m_WT,0m_LRP,30m_WT,30m_LRP,60m_WT,60m_LRP,120m_WT,120m_LRP" # TL12
+# Libs="0m,0_2m,7m,15m,30m,45m,60m,90m,120m,240m" # TL4
+Libs="240m"
+# Libs="0m_G,15m_G,30m_G,60m_G,120m_G,0m_H,15m_H,30m_H,60m_H,120m_H" # Bm3T3
+# Libs="0m_T,15m_T,30m_T,60m_T,120m_T,0m_U,15m_U,30m_U,60m_U,120m_U" # BK562
+# Libs="0m_tot,15m_tot,30m_tot,60m_tot,0m_poly,15m_poly,30m_poly,60m_poly" # TL5
+MapMethod="MTnorRNA_t5MTMMinformed6_withDups"
+reads="MTnorRNA" # Has to match AWK output filename MTnorRNA MT
+second="GA" # GA CT
+Regions="all" #  "ND1 ND2 CO1 CO2 ATP8_6 CO3 ND3 ND4L_4 ND5 CYB antiCYB ND6 antiND5 antiND4L_4 antiND3 antiATP8_6_CO3 antiCO2 antiCO1 antiND2 antiND1" "MTnorRNA" Bin1_2_3_4
+stringentFilter="no"
+task="readcountsOnly" # NOTE: region has to be 'all' for this to work
+
+for region in $Regions
+do
+sbatch -p short -t 0-12:00 --mem=50G --wrap="Rscript ../Scripts/${script} $Exp $Libs $MapMethod $reads $second $region $stringentFilter $task" 
+done
+
+
+10opt. To get per transcript data
+
+script="MismatchFrequencyTCandGA_byTxpt.R"
+Exp="TL7"
+# Libs="0m,90m_4sU,90m_6sG,180m_4sU6sG" # TL6
+Libs="0m,90m_4sU,90m_6sG_200,90m_6sG_1000,180m_4sU6sG_200,180m_4sU6sG_1000" # TL7
+# Libs="0m_tot,15m_tot,30m_tot,60m_tot,0m_IP,15m_IP,30m_IP,60m_IP"
+# Libs="0m_WT,0m_LRP,30m_WT,30m_LRP,60m_WT,60m_LRP,120m_WT,120m_LRP" # TL12
+# Libs="0m,0_2m,7m,15m,30m,45m,60m,90m,120m,240m" # TL4
+MapMethod="MT_t5MTMMinformed6_withDups"
+reads="MT" # Has to match AWK output filename MTnorRNA MT
+set="all" # Transcripts to plot
+task="plotOnly" # All plotOnly
+
+# sbatch -p short -t 0-12:00 --mem=50G --wrap="Rscript ../Scripts/${script} $Exp $Libs $MapMethod $reads $set $task" 
+Rscript ../Scripts/${script} $Exp $Libs $MapMethod $reads $set $task
+
+
+10opt. Filter bam based on read names pulled out above
+
+script="ExtractSelectReadsByNameForGRANDSLAM.sh"
+
+Exp='TL11' 
+Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_IP 15m_IP 30m_IP 60m_IP"
+MapMethod='t5MMinformed4' # MTMMinformed6 t5MTMMinformed6
+MTstatus='MTnorRNA'
+region='MTnorRNA'
+count='1'
+filt='numOther' # numTC dist
+for lib in $Libs
+do
+sbatch -e logs/ExtractSelect_${lib}_${count}.err -o logs/ExtractSelect_${lib}_${count}.log ../Scripts/${script} $Exp $lib $MapMethod $MTstatus $region $count $filt
+done
+
+
+11. Get conversion rates, also an option to get fraction new for each transcript from the binomial script
+
+# Run from directory called 'FracNew' (with logs folder), with matrices in the directory 'MMfrequency' which is on the same level as FracNew
+
+mkdir FracNew
+cd FracNew
+mkdir logs
+
+# Need to activate python virtual environment with all the correct packages loaded:
+source ~/Python_Venv/bin/activate
+unset PYTHONPATH # to keep it from using the old version of numpy
+
+# samps="0m 90m_4sU 90m_6sG 180m_4sU6sG" # TL6
+# samps="0 7 15 30 45 60 90" # 30m 60m"
+# samps="0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000" # TL7
+samps="15m 30m 60m" # TL5 TL8 TL9 TL11
+# samps="15m 30m 60m 120m" # BK562 Bm3T3
+# samps="30m 60m" # TL13
+
+# suffixes="_tot _IP" # TL8 TL9 TL11
+suffixes="_tot _poly" # TL5
+# suffixes="_WT_tot_A _WT_tot_B _WT_IP_A _WT_IP_B _LRP_tot_A _LRP_tot_B _LRP_IP_A _LRP_IP_B" # TL13
+# suffixes="_T _U" # BK562
+# suffixes="_G _H" # Bm3T3
+# "_IP_A _IP_B _tot_A _tot_B" _IP tot "_A _B" "_WT _LRP"
+
+bg='0m'
+Exp='TL5' # TL9 NHC2 Bm3T3
+MapMethod='MTnorRNA_t5MTMMinformed6_withDups' # MT_t5MTMMinformed6_withDups
+rateRegion='MTnorRNA' # Bin1_2_3_4 MTnorRNA allPC MTsomerRNA
+useConv='TC' # 'TC' 'CT' both
+dist='orig' # orig mod
+RatesOnly='TRUE' # FALSE
+stringentFilter='no' # yes
+
+script="getRates_and_FractionNew_TC_CT.py"
+for samp in $samps
+do
+for suffix in $suffixes
+do
+bgLibName=${bg}${suffix}
+LibName=${samp}${suffix}
+sbatch -p short -t 0-01:00 -o logs/FracNew_${LibName}_${useConv}_${rateRegion}_${dist}.log -e logs/FracNew_${LibName}_${useConv}_${rateRegion}_${dist}.err --wrap="python ../../Scripts/${script} $Exp $bgLibName $LibName $MapMethod $rateRegion $useConv $dist $RatesOnly $stringentFilter"
+done
+done
+
+
+# Combine rate files
+Exp="TL5"
+# lib=("0m_WT" "0m_LRP" "30m_WT" "30m_LRP" "60m_WT" "60m_LRP" "120m_WT" "120m_LRP") # TL12
+# lib=("0m" "90m_4sU" "90m_6sG" "180m_4sU6sG") # TL6
+# lib=("0m" "90m_4sU" "90m_6sG_200" "90m_6sG_1000" "180m_4sU6sG_200" "180m_4sU6sG_1000") # TL7
+# lib=("15m_tot" "30m_tot" "60m_tot" "15m_IP" "30m_IP" "60m_IP") # TL8 TL9 TL11
+lib=("15m_tot" "30m_tot" "60m_tot" "15m_poly" "30m_poly" "60m_poly") # TL5
+# lib=("30m_WT_tot_A" "60m_WT_tot_A" "30m_WT_tot_B" "60m_WT_tot_B" "30m_LRP_tot_A" "60m_LRP_tot_A" "30m_LRP_tot_B" "60m_LRP_tot_B" "30m_WT_IP_A" "60m_WT_IP_A" "30m_WT_IP_B" "60m_WT_IP_B" "30m_LRP_IP_A" "60m_LRP_IP_A" "30m_LRP_IP_B" "60m_LRP_IP_B") #TL13
+# lib=("15m_T" "30m_T" "60m_T" "120m_T" "15m_U" "30m_U" "60m_U" "120m_U") # BK562
+# lib=("15m_G" "30m_G" "60m_G" "120m_G" "15m_H" "30m_H" "60m_H" "120m_H") #  Bm3T3
+rateRegion='MTnorRNA' # Bin1_2_3_4 MTnorRNA allPC
+use="TConly" # TConly CTonly TCandCT
+MapMethod='MTnorRNA_t5MTMMinformed6_withDups' # MT_t5MTMMinformed6_withDups
+
+paste <(awk '{print $1"\t"$2}' ${Exp}_${lib[0]}_${MapMethod}_ratesFrom_${rateRegion}.txt) <(awk '{print $2}' ${Exp}_${lib[1]}_${MapMethod}_ratesFrom_${rateRegion}.txt) <(awk '{print $2}' ${Exp}_${lib[2]}_${MapMethod}_ratesFrom_${rateRegion}.txt) <(awk '{print $2}' ${Exp}_${lib[3]}_${MapMethod}_ratesFrom_${rateRegion}.txt) <(awk '{print $2}' ${Exp}_${lib[4]}_${MapMethod}_ratesFrom_${rateRegion}.txt) <(awk '{print $2}' ${Exp}_${lib[5]}_${MapMethod}_ratesFrom_${rateRegion}.txt) > ${Exp}_all_${MapMethod}_ratesFrom_${rateRegion}.txt
+
+
+12. Run GS with new rates
+
+# First copy GS directories from original run, delete final output files, and modify the .rates.tsv file with rates from above
+
+
+expt="Bm3T3" # NHC2 BK562
+Set="MT" # Nuc MT MTdsRNR2 MTdsrRNA
+MapMethod="t5MTMMinformed6" # t5MMinformed5
+# reps="_WT_tot_A _WT_tot_B _LRP_tot_A _LRP_tot_B _WT_IP_A _WT_IP_B _LRP_IP_A _LRP_IP_B" # _A _B "" _WT _LRP
+# reps="_tot _IP"
+# reps="_tot _poly"
+# reps="_T _U" #BK562
+reps="_G _H" #Bm3T3
+oldPcName="" # "_PcBin1_2_3_4"
+PcNames="PcMTnorRNA" # PcMTnorRNA PcBin1_2_3_4 PcAllPC PcMTsomerRNA PcBrute1 PcBruteBinCombo
+
+
+if [ "$Set" = "MT" ] || [ "$Set" = "MTdsrRNA" ]
+then
+suffix="modeAll"
+elif [ "$Set" = "Nuc" ]
+then
+suffix="lenient_modeAll"
+fi
+
+# Copy GS directory and delete .tsv and ext.tsv
+for rep in $reps
+do
+for PcName in $PcNames
+do
+cp -r GS_${expt}${rep}_${Set}_${MapMethod}_${suffix}${oldPcName} GS_${expt}${rep}_${Set}_${MapMethod}_${suffix}_${PcName}
+rm GS_${expt}${rep}_${Set}_${MapMethod}_${suffix}_${PcName}/${expt}${rep}_${Set}_${MapMethod}_${suffix}.tsv
+rm GS_${expt}${rep}_${Set}_${MapMethod}_${suffix}_${PcName}/${expt}${rep}_${Set}_${MapMethod}_${suffix}.ext.tsv
+done
+done
+
+
+# Modify .rates.tsv files
+# reps=("_WT_tot_A" "_WT_tot_B" "_LRP_tot_A" "_LRP_tot_B" "_WT_IP_A" "_WT_IP_B" "_LRP_IP_A" "_LRP_IP_B") # _A _B "" _WT _LRP
+# reps=("_T" "_U")
+# Pcs4=("0.007351457" "0.007640568")
+# Pcs5=("0.01244187" "0.011840939")
+# Pcs6=("0.020383989" "0.019320258")
+# Pcs7=("0.028677501" "0.026659103")
+# PcName="PcMTnorRNA"
+
+# reps=("_tot" "_IP")
+# Pcs4=("0.0072" "0.00487")
+# Pcs5=("0.0152" "0.00585")
+# Pcs6=("0.0193" "0.0103")
+# PcName="PcBrute1"
+
+reps=("_tot" "_poly")
+Pcs4=("0.00177819516382632" "0.000680076")
+Pcs5=("0.003478507" "0.001232852")
+Pcs6=("0.00712861" "0.004649393")
+PcName="PcBin1_2_3_4"
+
+reps=("_tot" "_poly")
+Pcs4=("0.001019" "0.000741")
+Pcs5=("0.0039" "0.017")
+Pcs6=("0.00712861" "0.02")
+PcName="PcBruteBinCombo"
+
+reps=("_tot" "_poly")
+Pcs4=("0.00205245" "0.002381688")
+Pcs5=("0.003536652" "0.002269389")
+Pcs6=("0.007262539" "0.005015308")
+PcName="PcMTnorRNA"
+
+reps=("_G" "_H")
+Pcs4=("0.007258344" "0.006323305")
+Pcs5=("0.010302972" "0.010161063")
+Pcs6=("0.012428371" "0.012534823")
+Pcs7=("0.017129625" "0.015155869")
+PcName="PcMTnorRNA"
+
+for i in {0..1}
+do
+linenumber1=3
+linenumber2=5
+newvalue4=${Pcs4[i]}
+newvalue5=${Pcs5[i]}
+newvalue6=${Pcs6[i]}
+newvalue7=${Pcs7[i]}
+
+file=GS_${expt}${reps[i]}_${Set}_${MapMethod}_${suffix}_${PcName}/${expt}${reps[i]}_${Set}_${MapMethod}_${suffix}.rates.tsv
+tmp=${expt}${reps[i]}_${Set}_${MapMethod}_${suffix}.rates.tmp
+
+awk 'BEGIN {OFS = "\t"} NR==n||NR==o{$4=a;$5=b;$6=c;$7=d}1' n=$linenumber1 o=$linenumber2 a=$newvalue4 b=$newvalue5 c=$newvalue6 d=$newvalue7 $file > $tmp && mv $tmp $file
+
+done
+
+
+
+script="GRANDSLAM.sh"
+
+Exp="Bm3T3" # Bm3T3
+MapMethod="t5MTMMinformed6"
+Set="MT"
+data="mouse" # mouse Hela
+run="MTrates" # Nuc MT NucRates MTrates
+makeCIT="no"
+dirName="PcMTnorRNA" # PcMod1 PcTop2000 PcMTnorRNA PcBin1_2_3_4 PcAllPC PcBrute1 PcBruteBinCombo
+# sbatch parameters
+job="short" # medium
+time="0-01:00" # 0-30:00
+
+# suffixes="WT_tot_A WT_tot_B LRP_tot_A LRP_tot_B WT_IP_A WT_IP_B LRP_IP_A LRP_IP_B" #TL13
+# suffixes="tot IP" #TL8 TL9 TL11
+# suffixes="tot poly" #TL5
+# suffixes="T U" # BK562
+suffixes="G H" # Bm3T3
+
+for suffix in $suffixes
+do
+ExpName=${Exp}_${suffix}_${Set} # NHC2_A_MT NHC2_A_NucTL12_WT_MT
+
+sbatch -p $job -t $time ../Scripts/${script} $ExpName $MapMethod $data $run $makeCIT $dirName
+done
+
+# Move .tsv file to personal computer and complete analysis there (or complete on O2, see below)
+
+13. Make fraction new file from GS output .tsv 
+# Leave out early time points if they don't have enough labeling (e.g. fraction new looks off)
+mkdir FracNew
+mkdir HalfLife
+# Open script, modify, and run:
+source('/Users/Mary/Desktop/Data/TimelapseSeq/Scripts/GStoFracNewTable.R')
+
+# Or on O2:
+### **** This has to be opened and timepoints modified *******
+Expt="TL12" # TL13 Bm3T3 BK562
+# suffixes="tot IP" # TL8 TL9 TL11
+# suffixes="tot poly" # TL5
+suffixes="WT LRP" # TL10 TL12
+# suffixes="WT_tot_A WT_tot_B LRP_tot_A LRP_tot_B WT_IP_A WT_IP_B LRP_IP_A LRP_IP_B" # TL13
+# suffixes="T U" # BK562
+# suffixes="G H" # Bm3T3
+Set="Nuc" # MTdsrRNA MT
+Modifier="t5MMinformed5_lenient_modeAll" # t5MTMMinformed6_modeAll
+PcSets="" # _PcAllPC _PcMTnorRNA _PcBruteBinCombo _modeAll
+
+script="GStoFracNewTable_O2.r"
+
+vim ../${script} # update timepoints
+
+for suffix in $suffixes
+do
+for PcSet in $PcSets
+do
+fullname=${Expt}_${suffix}
+sbatch -p short -t 0-01:00 --wrap="Rscript /n/groups/churchman/mc348/TimelapseSeq/Scripts/${script} $Expt $fullname $Set $Modifier $PcSet"
+done
+done
+
+14. Calculate half-lives
+
+# defining variables in bash doesn't work on zsh
+# Hela double time: 26.525h: 1591.5m
+# TL10
+# python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting.py --path /Users/Mary/Desktop/Data/TimelapseSeq/HEK_TL10_LRPPRC_2022_07/ --file TL10_WT_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 1440 --tps 0 30 60 120
+
+# TL4 MT (TL_rep2)
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_TL4_combined/ --file TL4_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew_60mAndafter --doubletime 10000 --tps 0 60 90 120 240 --ng MT-ND1 --toplot 1state
+# TL4_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew_60mAndafter --doubletime 1592 --tps 0 60 90 120 240
+
+# TL3 MT (TL_rep1)
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_TL3_2020_09/ --file TL3_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew_60mAndafter --doubletime 10000 --tps 0 60 90 120 240 --ng MT-ND1 --toplot 1state
+# TL3_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew_60mAndafter --doubletime 1592 --tps 0 60 90 120 240 
+# 0 15 30 45 60 90 120 240
+
+# TL1 MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_TL1_2020_02/ --file TL1_MT_t5MMinformed4_modeAll_FracNew_60mAndafter --doubletime 10000 --tps --tps 0 60 120 240 --ng MT-ND1 --toplot 1state 
+# TL1_MT_t5MMinformed4_modeAll_FracNew_60mAndafter --tps 0 60 120 240
+
+# TL11 MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_TL11_500IP_2022_07/ --file TL11_IP_MT_t5MMinformed4_modeAll_FracNew --doubletime 1592 --tps 0 15 30 60 --ng MT-ND1
+
+# TL10 WT_MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/HEK_TL10_LRPPRC_2022_07/ --file TL10_WT_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 10000 --tps 0 30 60 120 --ng MT-ND1
+
+# TL10 LRP_MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/HEK_TL10_LRPPRC_2022_07/ --file TL10_LRP_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew_30minEdit --doubletime 10000 --tps 0 30 60 120 --ng MT-ND1 --toplot 1state
+
+# TL12 WT_MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/HEK_TL12_LRPPRC_2022_08/ --file TL12_WT_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 10000 --tps 0 30 60 120 --ng MT-ND1 --toplot 1state
+
+# TL12 LRP_MT
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/HEK_TL12_LRPPRC_2022_08/ --file TL12_LRP_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 10000 --tps 0 30 60 120 --ng MT-ND1 --toplot 1state
+
+# TL6 MT (double label)
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_2021_TL6_doubleLabeling/ --file TL6_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 1592 --tps 0 90 180 --ng MT-ND1 --toplot 1state
+
+# TL7 MT (double label)
+python /Users/Mary/Desktop/Data/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path /Users/Mary/Desktop/Data/TimelapseSeq/Hela_2021_TL7_doubleLabeling/ --file TL7_MT_t5MTMMinformed6_modeAll_PcMTnorRNA_FracNew --doubletime 1592 --tps 0 90 180 --ng MT-ND1 --toplot 1state
+
+# Or on O2
+# Need to activate python virtual environment with all the correct packages loaded:
+source ~/Python_Venv/bin/activate
+unset PYTHONPATH # to keep it from using the old version of numpy
+
+
+# TL13 MTdsrRNA LRPPRC mitoriboIP
+Exp="TL13"
+path=`pwd`'/'
+# suffixes="tot IP" 
+suffixes="WT_tot_A WT_tot_B LRP_tot_A LRP_tot_B WT_IP_A WT_IP_B LRP_IP_A LRP_IP_B" 
+Set="MTdsrRNA"
+ModifierPrefix="t5MTMMinformed6_modeAll"
+PcSets="_PcBrute1" #"_Pc001 _Pc002 _Pc003 _Pc004 _Pc005 _Pc006 _Pc007 _Pc008 _Pc009 _Pc010" _PcBrute1 _PcBin1_2_3_4 _PcMTsomerRNA
+doubletime=10000 
+timepoints="0 30 60"
+normgene='MT-ND1'
+toplot='1state'
+
+# TL11 MTdsrRNA  mitoriboIP high 4sU
+Exp="TL11"
+path=`pwd`'/'
+suffixes="tot IP" 
+Set="MTdsrRNA"
+ModifierPrefix="t5MMinformed4_modeAll"
+PcSets="_PcBin1_2_3_4"
+doubletime=10000 # 10000 1592
+timepoints="0 15 30 60"
+normgene='MT-ND1'
+toplot='1state'
+
+# TL8/TL9 MTdsrRNA  mitoriboIP 100uM(?) 4sU
+Exp="TL9"
+path=`pwd`'/'
+suffixes="tot IP" 
+Set="MTdsrRNA"
+ModifierPrefix="t5MTMMinformed6_modeAll"
+PcSets="_PcBruteBinCombo"
+doubletime=10000 # 10000 1592
+timepoints="0 15 30 60"
+normgene='MT-ND1'
+toplot='1state'
+
+# TL10/TL12 Nuc HEK LRPPRC KO 
+Exp="TL12"
+path=`pwd`'/'
+suffixes="WT LRP" 
+Set="Nuc"
+ModifierPrefix="t5MMinformed5_lenient_modeAll"
+PcSets="_Mitogenes"
+doubletime=10000 # 10000 1592
+timepoints="0 30 60 120"
+normgene='NDUFS1' # NDUFS1 MT-ND1
+toplot='none' # 1state
+genome='HEK'
+
+# TL5 MT polysome fractions 100uM(?) 4sU
+Exp="TL5"
+path=`pwd`'/'
+suffixes="tot poly" 
+Set="MT"
+ModifierPrefix="t5MTMMinformed6_modeAll"
+PcSets="_PcMTnorRNA"
+doubletime=10000 # 10000 1592
+timepoints="0 15 30 60"
+normgene='MT-ND1'
+toplot='1state'
+
+# BK562 MT
+Exp="BK562"
+path=`pwd`'/'
+suffixes="T U" 
+Set="Nuc"
+ModifierPrefix="t5MMinformed5_lenient_modeAll"
+PcSets="_Mitogenes"
+doubletime=10000 # 10000
+timepoints="0 15 30 60 120"
+normgene='NDUFS1' # NDUFS1 MT-ND1
+toplot='none' # 1state
+genome='K562'
+
+# Bm3T3 MT
+Exp="Bm3T3"
+path=`pwd`'/'
+suffixes="G H" 
+Set="MT"
+ModifierPrefix="t5MTMMinformed6_modeAll"
+PcSets="_PcMTnorRNA"
+doubletime=10000 # 10000
+timepoints="0 15 30 60 120"
+normgene='mt-Nd1'
+toplot='1state'
+genome='mouse'
+
+for suffix in $suffixes
+do
+for PcSet in $PcSets
+do
+Modifier=${ModifierPrefix}${PcSet} # t5MTMMinformed6_modeAll_PcBin1_2_3_4
+file=${Exp}_${suffix}_${Set}_${Modifier}_FracNew
+sbatch -p short -t 0-03:00 --mem=10G --wrap="python /n/groups/churchman/mc348/TimelapseSeq/Scripts/RNAdegradation_fitting_v2.py --path $path --file $file --doubletime $doubletime --tps $timepoints --ng $normgene --toplot $toplot --genome $genome"
+done
+done
+
+
+
+
+# Checking for strand switching
+# First run MakeBamsUniqueAndStrandSp.sh
+Exp="TL9"
+MapMethod="t5MTMMinformed6"
+Libs="60m_tot 60m_IP"
+for lib in $Libs
+do
+sbatch ../Scripts/MakeBamsUniqueAndStrandSp.sh ${Exp}_${lib} $MapMethod
+done
+
+# Then BinByConversion.sh
+Exp="TL9" # TL1
+MapMethod="t5MTMMinformed6" # t5MMinformed4
+Libs="60m_tot 60m_IP"
+for lib in $Libs
+do
+sbatch ../Scripts/BinByConversion.sh ${Exp}_${lib} $MapMethod
+done
+
+# And after this move to PC (*.bedGraph) and view on IGV or run SplitReadsPercent.r
+
+
+# Get md5 checksums
+touch md5sums.txt
+
+
+Exps="TL11"
+mods="tot IP"
+tps="0 15 30 60"
+
+for Exp in $Exps
+do
+for mod in $mods
+do
+for tp in $tps
+do
+md5sum ${Exp}_${tp}m_${mod}_R*.fastq.gz >> md5sums.txt
+done
+done
+done
+
+
+Exps="TL13"
+mods1="WT LRP"
+mods2="tot IP"
+tps="0 30 60"
+reps="A B"
+
+for Exp in $Exps
+do
+for mod1 in $mods1
+do
+for mod2 in $mods2
+do
+for tp in $tps
+do
+for rep in $reps
+do
+md5sum ${Exp}_${tp}m_${mod1}_${mod2}_${rep}_R*.fastq.gz >> md5sums.txt
+# md5sum ${Exp}_${tp}m_${mod}_R2.fastq.gz
+done
+done
+done
+done
+done

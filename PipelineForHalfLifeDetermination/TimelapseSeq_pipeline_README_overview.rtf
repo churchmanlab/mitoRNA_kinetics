@@ -1,0 +1,342 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2513
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fnil\fcharset0 Menlo-Regular;\f2\fnil\fcharset0 Menlo-Bold;
+}
+{\colortbl;\red255\green255\blue255;\red251\green2\blue7;\red0\green0\blue0;\red64\green11\blue217;
+\red0\green0\blue0;\red23\green186\blue251;}
+{\*\expandedcolortbl;;\cssrgb\c100000\c14913\c0;\csgray\c0;\cssrgb\c32308\c18668\c88227;
+\cssrgb\c0\c0\c0;\cssrgb\c0\c77905\c98860;}
+\margl1440\margr1440\vieww21920\viewh7280\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 This document contains only an overview. Match the steps to those in TimelapseSeq_pipeline_README_commandTemplates.rtf for details. Be sure to open that text file in a script editor so that commented out regions are colored differently because lists are left for all the experiments previously performed.\
+\
+In general these steps need to be run sequetially. However steps with the same number (e.g. 5a and 5b) can be run in parallel.\
+\
+\
+\
+\
+1. If facility hasn't already done so, concatenate data from lanes on sequencer.\
+\
+2. TrimAdapter_Timelapse.sh (for paired end sequencing only)\
+\
+3. MapForGRANDSLAM.sh \
+	500 uM 4sU: use t5MMinformed4 \
+	50 uM 4sU or 100 uM NHC or 500 uM with uridine in media: use t5MMinformed5 (take nuclear reads from this) AND t5MTMMinformed6 (more stringent - take mito reads from this)\
+	* t5 indicates an extra 5 nt was removed from the 3' end of the fragment in TrimAdapter step\
+\
+4. ExtractMitoReadsForGRANDSLAM.sh (this will also subset nuclear RNA)\
+	uncomment sections at the bottom to make files for viewing on IGV\
+	4opt. There is an optional script to downsample just the rRNA, useful when there is too much for GRANDSLAM to handle, e.g. IPed samples.\
+\
+\
+5a. Make bamlists for GRANDSLAM\
+6a. Run GRANDSLAM.sh (this will just be the first iteration, without correct rates at low 4sU/NHC)\
+\
+5b. Subset genes further for calling conversion rates\
+	For mito, will just use MTnorRNA produced in step (4)\
+	For nuc, choose reads mapping to 2000 fastest turnover genes (judged by Brendan's K562 data)\
+	* Genes have already been picked, using ChooseTopTurnoverGenesSummingNreadsANDSelectGenesInBed.R.\
+6b. ProcessAlignments_TimelapseSeq_withDups.sh (run this on both mito and Nuc subsets - MTnorRNA and NucTop2000)\
+7b. Run mismatch scripts, in series. Be sure to run test scripts to check that all files were completed\
+	Overview: Call mismatches per read, test, concatenate, sort. Call mismatches per fragment, test, concatenate,  sort. \
+	* If there are many libraries and/or they are very large, may need to run them in smaller groups to not overload O2\
+\
+5c. run_featureCounts_Timelapse.sh\
+6c. AddGeneName_RPKMS_customGTF.R to calculate RPK, RPKM, etc and translate the GeneID to GeneName\
+\
+\
+8. run_countMM_MC.sh to get overall mismatch stats and MismatchCount.R to plot them.\
+\
+9. run_AWKforTCperTplus.sh to shorten the modified bed files output from the mismatch scripts above. TC columns are output by default. You can choose GA or CT to also be the second conversion to track.\
+\
+10.  MismatchFrequencyTCandGAorCT.R to produce [n,k] matrix for input to binomial scripts to get conversion rates and fractions new.\
+\
+11. getRates_and_FractionNew_TC_CT.py\
+	record TC conversion rates\
+\
+12. GRANDSLAM.sh (this time plugging in rates from step above)\
+	The .tsv file in the output will give fraction new for each transcript at each time point (MAP value)\
+\
+13. GStoFracNewTable_O2.R to pull out fractions new from the GS output table\
+	Open this script and modify inputs\
+\
+14. RNAdegradation_fitting_v2.py to get half-lives\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+\
+2opt. sbatch -e logs/ExtractMito_$\{lib\}.err -o logs/ExtractMito_$\{lib\}.log ../Scripts/ExtractMitoReadsForGRANDSLAM.sh $lib $MapMethod\
+2opt. Choose top (200) genes for making [n,k] matrices: \
+Combine ReadsPerGene files, \
+AddGeneName_RPKMS_customGTF.R (see InSilicoMutate_pipeline_README.txt)\
+GENCODE_gtf2bed.py to make bed file for next script:\
+sbatch -p short -t 0-01:00 --wrap="python ../Scripts/GENCODE_gtf2bed.py -i mouseNIH3T3_mm10_MTmod_dm6_ercc_cat.gtf -o mouseNIH3T3_mm10_MTmod.bed -g mouse"\
+\
+ChooseTopGenesSummingNreadsANDSelectGenesInBed.R (then use sbatch command at bottom to select reads from bam)\
+\
+2opt. Downsample mito rRNA reads (but not the rest of mito reads)\
+\
+3. GRANDSLAM.sh and/or:\
+4. ProcessAlignments_TimelapseSeq.sh (uses modifyBed.R, which is in "~/R-3.5.1/library/)\
+\
+** Be sure fasta path in findMismatches_complete_20_02_28_MC.R matches reference used for mapping ***\
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf2 5. go to directory with tmp files, sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/submit_parallel_findMM_MC.sh (which uses a new findMismatches_complete_20_02_28_MC.R and test_submitMM.sh)\
+or sbatch ../../Scripts/submit_parallel_findMM_MC_BrendanReads.sh\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 5. go to directory one up from tmp files, \
+Libs='G1 G2 G3 G4 G5 H1 H2 H3 H4 H5'\
+dirName='MMinformed4_Top100_withDups\
+genome='mouse'\
+\
+Exp="NHC2" #TL5 TL4 SStot1 TL9 SStot2 NHC1\
+# Libs="0m_tot 15m_tot 30m_tot 60m_tot 0m_poly 15m_poly 30m_poly 60m_poly"\
+#Libs="0m_tot 15m_tot" # 30m_tot 60m_tot"\
+# Libs="0m_IP 15m_IP 30m_IP 60m_IP"\
+# Libs="0m 7m 15m 30m 45m 60m 90m"\
+# Libs="0m 90m_4sU 90m_6sG 180m_4sU6sG"\
+# Libs="0m 90m_4sU 90m_6sG_200 90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000"\
+# Libs="0m 90m_4sU 90m_6sG_200"\
+# Libs="90m_6sG_1000 180m_4sU6sG_200 180m_4sU6sG_1000"\
+# Libs="DMSO 1_NHC 10_NHC 100_NHC 100_Molnu"\
+#Libs="0m_tot_A 30m_tot_A 60m_tot_A 0m_IP_A 30m_IP_A 60m_IP_A 0m_tot_B 30m_tot_B 60m_tot_B 0m_IP_B 30m_IP_B 60m_IP_B"\
+# Libs="0m_tot_B 30m_tot_B 60m_tot_B 0m_IP_B 30m_IP_B 60m_IP_B"\
+Libs="0m_A 15m_A 30m_A 45m_A 60m_A 90m_A 120m_A 240m_A 0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"\
+#Libs="0m_B 15m_B 30m_B 45m_B 60m_B 90m_B 120m_B 240m_B" \
+#Libs="30m_B 45m_B 60m_B 90m_B 120m_B 240m_B"\
+dirName="
+\f1\fs22 \cf3 \CocoaLigature0 NucTop2000_t5MMinformed5_withDups"
+\f2\b \cf4  
+\f0\b0\fs24 \cf0 \CocoaLigature1 # 
+\f2\b\fs22 \cf4 \CocoaLigature0 MT_MMinformed4_withDups Nuc_MMinformed4_withDups MT_MTMMinformed6_withDups Nuc_MTMMinformed6_withDups MTnorRNA_t5MTMMinformed6_withDups MT_t5MTMMinformed6_withDups MT_t5MTMMinformed6_withDups
+\f0\b0\fs24 \cf0 \CocoaLigature1 \
+genome="Hela"\
+\
+for lib in $Libs\
+do\
+sbatch -e logs/submit_parallel_$\{lib\}_$\{dirName\}.err -o logs/submit_parallel_$\{lib\}_$\{dirName\}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/submit_parallel_findMM_MC_batchSubmit.sh $\{Exp\}_$\{lib\}_$\{dirName\} $genome\
+done\
+\
+ls -l slurm* to check size of all slurms files (should be ~386)\
+rm slurm*\
+\
+5b. \cf2 /n/groups/churchman/mc348/TimelapseSeq/Scripts/test_submitMM.sh \
+If still some left: replace `ls tmp*` with `./test_submitMM.sh`\cf0 \
+from directory one up from tmp files\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\
+/n/groups/churchman/mc348/TimelapseSeq/Scripts/test_submitMM_batchSubmit.sh $\{Exp\}_$\{lib\}_$\{dirName\}\
+done\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+--> If there are files left, rerun step 5a with 
+\f1\fs22 \cf3 \CocoaLigature0 submit_parallel_findMM_MC_batchSubmit_rerun.sh:
+\f0\fs24 \cf5 \CocoaLigature1 \
+for lib in $Libs\
+do\
+\cf0 sbatch -e logs/submit_parallel_rerun_$\{lib\}_$\{dirName\}.err -o logs/submit_parallel_rerun_$\{lib\}_$\{dirName\}.log \cf5 /n/groups/churchman/mc348/TimelapseSeq/Scripts/\cf0 submit_parallel_findMM_MC_batchSubmit_rerun.sh\cf5  $\{Exp\}_$\{lib\}_$\{dirName\} $genome\
+done\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f1\fs22 \cf3 \CocoaLigature0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \CocoaLigature1 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf2 5b. sbatch -p short -t 0-01:00 --wrap="cat tmp*MM.bed > reads.MM.bed"\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\
+sbatch -p short -t 0-01:00 -e cat_$\{lib\}.err --wrap="cat $\{Exp\}_$\{lib\}_$\{dirName\}/tmp*MM.bed > $\{Exp\}_$\{lib\}_$\{dirName\}/reads.MM.bed" \
+done\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+5c. check err file (ls cat*) to make sure they finished\
+    rm cat*\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\cf0 \
+rm \cf5 $\{Exp\}_$\{lib\}\cf0 _$\{dirName\}/tmp*\
+done\
+\
+6. \cf2 sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_sortReads_byName.sh (uses sortReads_byName.R)\cf0 \
+for lib in $Libs\
+do\
+sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_sortReads_byName_batchSubmit.sh \cf5 $\{Exp\}_\cf0 $\{lib\}_$\{dirName\}\
+done\
+\
+    check slurms (should be ~31) \
+\
+6b. \
+\cf5 for lib in $Libs\
+do\cf0 \
+rm \cf5 $\{Exp\}_$\{lib\}\cf0 _$\{dirName\}/reads.MM.bed\
+done\
+\
+\
+\
+\
+\
+7. \cf2 sbatch /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_MM_per_fragment_20_02_28_MC.sh (which uses a new MM_per_fragment_20-02-28.R and test_MM_per_F.sh)\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 run_MM_per_fragment_MC_batchSubmit.sh calls script that calls GtoA as well as TtoC \cf6 **** 2/28/22: Will need to update this for C>T and A>G that are now in reads.MM.bed files ('4types') **** done 4/9/22\cf0 \
+for lib in $Libs\
+do\
+sbatch -e logs/run_MM_per_frag_$\{Exp\}_$\{lib\}_$\{dirName\}.err -o logs/run_MM_per_frag_$\{Exp\}_$\{lib\}_$\{dirName\}.log /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_MM_per_fragment_MC_batchSubmit.sh $\{Exp\}_$\{lib\}_$\{dirName\}\
+done\
+\
+   check slurms \
+   rm slurm* \
+\
+7b. \cf2 /n/groups/churchman/mc348/TimelapseSeq/Scripts/test_MM_per_F.sh\cf0 \
+for lib in $Libs\
+do\
+/n/groups/churchman/mc348/TimelapseSeq/Scripts/test_MM_per_F.sh $\{Exp\}_$\{lib\}_$\{dirName\}\
+done\
+\
+7c. \cf2 sbatch -p short -t 0-01:00 --wrap="cat tmp*fragments.bed > reads_MM.fragments.bed"\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\
+sbatch -p short -t 0-01:00 --wrap="cat $\{Exp\}_$\{lib\}_$\{dirName\}/tmp*fragments.bed > $\{Exp\}_$\{lib\}_$\{dirName\}/reads_MM.fragments.bed" \
+done\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+7c. check slurms to make sure they finished\
+    rm slurm*\
+    rm *_$\{dirName\}/tmp*\
+for lib in $Libs\
+do\
+rm $\{Exp\}_$\{lib\}_$\{dirName\}/tmp*\
+done\
+\
+7d. \cf2 sbatch -p short -t 0-12:00 --mem=80G --wrap="bedtools sort -i reads_MM.fragments.bed > reads_MM.fragments.sort.bed"\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 sbatch -p short -t 0-03:00 --mem=150G --wrap="bedtools sort -i \cf5 $\{Exp\}_$\{lib\}_$\{dirName\}/\cf0 reads_MM.fragments.bed > \cf5 $\{Exp\}_$\{lib\}_$\{dirName\}/\cf0 reads_MM.fragments.sort.bed"\
+done\
+\
+7e. \cf2 rm reads_MM.fragments.bed\
+\cf0 for lib in $Libs\
+do\
+rm $\{Exp\}_$\{lib\}_$\{dirName\}/reads_MM.fragments.bed\
+done\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\pardirnatural\partightenfactor0
+\cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 8. Count all mismatches \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 for lib in $Libs\
+do\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 sbatch -o $\{Exp\}_$\{lib\}_$\{dirName\}/$\{lib\}_mismatches.count /n/groups/churchman/mc348/TimelapseSeq/Scripts/run_countMM_MC.sh $\{Exp\}_$\{lib\}_$\{dirName\}\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf5 done\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 \
+9. \
+for paired end\
+run_AWKforTCperT_GAperG_fragments.sh\
+sbatch ../Scripts/run_AWKforTCperT_GAperG_fragments.sh $\{lib\}_MTnorRNA $MapMethod\
+for single end (COVID expt)\
+run_AWKforTCperT_CTperT.sh\
+\
+\
+\
+10. R scripts to plot MM frequencies\
+      or to make fastas\
+   \
+    mkdir MMfrequency\
+    e.g. sbatch -p short -t 0-01:00 --mem=50G --wrap="Rscript ../Scripts/MismatchFrequencyTCandGA.R MTnorRNA" (need to modifiy this first to match experiment)\
+           sbatch -p short -t 0-01:00 --mem=50G --wrap="Rscript ../Scripts/MismatchFrequencyTCandGA_byTxpt.R"\
+\
+	run the above for all regions together then for each txpt individually to get separate matrices for fraction new for each txpt below\
+\
+	update 5/11/22: Run through once for all regions, check T count distribution of sample with lowest mean T count per fragment. Use T count distribution from this to set distribution for all samples\
+\
+11. Binomial conversion to get fraction new: getRates_and_FractionNew_TC_CT.py\
+	Then combine fracNew files with command at the bottom of above script\
+\
+12. GS, plugging in PcMod rate from (11) for single and double new\
+\
+13. Get half-life with\
+\
+Output table reads_MM.fragments.sort.bed:\
+1. chr \
+2. read1? start \
+3. read1? end \
+4. readname \
+5. read quality \
+6. strand\
+7. SAM flag (strand info)\
+8. CIGAR \
+9. read 1? sequence *** modified 10/2020 by MTC to be fragment sequence\
+10. read1? quality\
+11. quality of mismatches  [i,1] \
+12. #genomic nts covered [i,2] \
+13. Read nt(s) at mm position [i,3] \
+14. mm position(s) [i,4] \
+15. genomic nt(s) at mm position(s) [i,5] \
+16. reference position [i,6] \
+17. quality at each position [i,7] \
+18. total # mismatches [i,8] \
+19. # T>C mismatches [i,9] \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf2 20. # G>A mismatches \cf0 [i,10] \cf2 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 21. whether fragment contains T>C mismatch (0 or 1) [i,11] \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf2 22. whether fragment contains G>A mismatch (0 or 1) \cf0 [i,12] \cf2 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 23. total aligned bases (read1) [i,13] \
+\
+\
+Downstream analysis:\
+1. Count coverage over each gene with bam file _filtered_temp.bam and gene .bed file. Use something like bedtools coverage -a A.bed -b B.bed -d \
+Then concatenate exons\
+This should give total nt covering each gene\
+* strand, split, need to see how paired end reads are handled\
+\
+How many of these are mismatches? T to C?\
+\
+2. \
+\
+\
+\
+\
+From Brendan 3/2020\
+Here's a new batch of scripts to analyze TimeLapse data, based on what we discussed (and all agreed on, at least I think). The changes include:\
+\
+All reads are aligned as pairs (no read merging, which usually results in ~10-25% less reads mapping for no obvious reason). Since we are not merging pairs, I'm doing equal quality filtering on both ends of reads prior to mapping. \
+The sequencing quality information for nucleotides that fall within the overlapping region of read pairs is used to determine if a mismatch that falls within this region is considered real or not. Basically, if there is a discrepancy between the reads, we use the nucleotide from the read with higher quality at that position. You can read through the comments in the scripts for more info. \
+\
+\
+Similar to before, the usage should be:\
+1. cutadapt.sh\
+2. align.sh\
+3. processAlignments.sh . (which uses a new modifyBed.R)\
+4. submit_parallel_findMM.sh (which uses a new findMismatches_complete_20_02_28.R and test_submitMM.sh)\
+4b.cat tmp*MM.bed files\
+5. run_sortReads_byName.sh (uses sortReads_byName.R)\
+6. run_MM_per_fragment_20-02-28.sh (which uses a new MM_per_fragment_20-02-28.R and test_MM_per_F.sh)\
+7. run_countMM.sh (which uses a new countMM_bed.R)\
+\
+The output of step 5 will be all mismatches called per read, and the output of step 6 will be all mismatches per fragment (ie, pair of reads). These files have a ton of information that aren't necessary for downstream analysis, so in the future we can cut out a lot of columns of data... I just don't want to do this yet until we're sure everything is working.\
+I haven't gone straight through this pipeline with any samples yet, so there's probably (definitely) a few minor bugs that I haven't caught yet. I'm going to be trying to push through some samples through these new scripts today, so I'll let you know if anything comes up.\
+\
+\
+\
+}
