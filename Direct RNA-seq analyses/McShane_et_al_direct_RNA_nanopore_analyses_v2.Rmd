@@ -1,0 +1,288 @@
+---
+title: "McShane et al. Direct RNA nanopore analyses"
+output: html_document
+---
+
+```{r setup, echo = FALSE, message = FALSE, warning = FALSE}
+
+knitr::opts_chunk$set(message = FALSE,        # Hide messages/warnings/errors from loading packages
+                      warning = FALSE,
+                      error = FALSE,
+                      cache = TRUE)           # By default, cache results to avoid re-running
+                                              # super long things every time you knit
+                      
+```
+
+
+```{r, include=FALSE}
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(RColorBrewer)
+library(viridis)
+library(ggpubr)
+library(mosaic)
+library(biomaRt)
+library(gplots)
+library(ggbeeswarm)
+
+'%!in%' <- function(x,y)!('%in%'(x,y))
+
+getPalette <-  colorRampPalette(brewer.pal(9, "Spectral"))
+cbPalette <- getPalette(12)
+
+getPalette1 <- colorRampPalette(brewer.pal(8, "Dark2"))
+getPalette2 <- colorRampPalette(brewer.pal(8, "Set2"))
+cbPalette_long <- c(getPalette1(8), getPalette2(8))
+
+ordered_mito_gene_list = c('MT-ND1','MT-ND2','MT-CO1','MT-CO2','MT-ATP8-6','MT-CO3','MT-ND3','MT-ND4L-4','MT-ND5','MT-CYB')
+
+```
+
+
+## 5'-end processing
+
+```{r}
+
+# Load results computed on HPC
+
+myo_D0_5prime = read.table("/path/to/myoblasts_D0_polyA_enriched_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+myo_D7_5prime = read.table("/path/to/myoblasts_D7_polyA_enriched_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+K562_1_5prime = read.table("/path/to/K562_rep1_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+K562_2_5prime = read.table("/path/to/K562_rep2_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+HeLa_5prime = read.table("/path/to/HeLa_polyA+_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+
+# Add sample name
+myo_D0_5prime$sample_name <- "myoblasts_Day0"
+myo_D7_5prime$sample_name <- "myoblasts_Day7"
+K562_1_5prime$sample_name <- "K562_rep1"
+K562_2_5prime$sample_name <- "K562_rep2"
+HeLa_5prime$sample_name <- "HeLa"
+
+# Concatenate all samples
+df_5prime <- rbind(myo_D0_5prime,myo_D7_5prime,K562_1_5prime,K562_2_5prime,HeLa_5prime)
+
+# Calculate proportion of unprocessed reads
+df_5prime <- df_5prime %>% mutate(ratio = unprocessed_5prime / (processed_5prime + unprocessed_5prime)) %>% filter(gene_name != "MT-ND6")
+df_5prime$gene_name <- factor(df_5prime$gene_name, levels=ordered_mito_gene_list)
+
+df_5prime %>%
+  ggplot(aes(x=gene_name, y=ratio, fill=sample_name)) + geom_bar(stat="identity", position="dodge") + theme_bw() + scale_fill_manual(values=c(cbPalette_long[2],cbPalette_long[3],cbPalette_long[3],cbPalette_long[1],cbPalette_long[5])) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ylab("fraction of unprocessed reads") + ylim(0,1)
+
+
+ggsave("/path/to/all_cell_lines_with_HeLa_5prime_processing_proportions.pdf",
+       width = 6,
+    height = 2.5,
+    units = c("in"))
+
+```
+
+
+
+
+## Poly(A) tail length in polyA+ direct RNA-seq
+
+```{r}
+
+# Get processing status and poly(A) tail length for each read
+HeLa_process_df = read.table("/path/to/HeLa_polyA+_read_processing_status.txt", sep="\t", header=T)
+HeLa_nano_df = read.table("/path/to/HeLa_polyA+_polyA_enriched_polyA_estimates.tsv", sep="\t", header=T)
+
+# Filter for reads that pass QC in nanopolish
+nano_df <- HeLa_nano_df %>% filter(qc_tag %in% c("PASS","ADAPTER") & grepl("MT", contig))
+
+# Merge processing status and poly(A) tail length, filter for reads that end at the transcript end (3'-end processed) and for protein-coding genes on the heavy-strand
+df <- inner_join(HeLa_process_df, nano_df, by=c("read"="readname")) %>%
+  dplyr::select(read, gene_name, polya_length,category_5prime, category_3prime) %>%
+  filter(category_3prime == "processed_3prime" & !grepl("RNR", gene_name) & !grepl("MT-T", gene_name) & !grepl("anti", gene_name) & gene_name != "MT-ND6") %>% distinct()
+
+# Order mito transcripts by position on heavy strand
+ordered_mito_gene_list = c('MT-ND1','MT-ND2','MT-CO1','MT-CO2','MT-ATP8-6','MT-CO3','MT-ND3','MT-ND4L-4','MT-ND5','MT-CYB')
+df$gene_name <- factor(df$gene_name, levels=ordered_mito_gene_list)
+
+
+```
+
+```{r}
+
+# Plot poly(A) tail length distribution
+
+df %>% 
+  ggplot(aes(x=gene_name, y=polya_length)) + geom_violin() + geom_boxplot(outlier.shape = NA) + theme_bw() + ylim(0,120) +
+  scale_colour_manual(values=c(cbPalette_long)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+ggsave("/path/to/mito_polyA_length_HeLa_violin_and_boxplot.pdf",
+       width = 6,
+    height = 3,
+    units = c("in"))
+
+
+```
+
+
+
+```{r}
+
+# Compare each pair of transcripts using a Wilcoxon rank-sum test
+
+# Define function
+compare_pA_length <- function(x,y){
+  
+  df1 <- df %>% filter(gene_name == x)
+  df2 <- df %>% filter(gene_name == y)
+  
+  pvalue = wilcox.test(df1$polya_length, df2$polya_length)$p.value
+  
+  return(pvalue)
+  
+}
+
+# Stats for each pair of transcript
+combos <- expand.grid(ordered_mito_gene_list, ordered_mito_gene_list) %>% filter(Var1 != Var2) %>%
+  rowwise() %>%
+  mutate(pvalue = compare_pA_length(Var1, Var2)) %>%
+  mutate(FDR = p.adjust(pvalue, method="BH"))
+
+# Filter for the pairs that are NOT significant
+combos %>%
+  filter(FDR > 0.05)
+
+```
+
+
+## 5'-end processing vs. poly(A) tail length
+
+```{r}
+
+# Plot distribution of poly(A) tail length based on 5'-end processing status
+
+df %>% filter(category_5prime != "other" & gene_name %in% c("MT-CO1","MT-ND1","MT-CYB","MT-CO3")) %>%
+  ggplot(aes(x=polya_length, colour=category_5prime)) + geom_density() + theme_bw() + xlim(0,100) +
+  scale_colour_manual(values=cbPalette_long) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + facet_wrap(~gene_name, ncol=4)
+
+ggsave("/path/to/mito_polyA_length_processed_vs_unprocessed_HeLa_density_plot.pdf",
+       width = 8,
+    height = 2,
+   units = c("in"))
+
+```
+
+
+```{r}
+
+# Get number of reads per category
+
+df %>% filter(gene_name %in% c("MT-CO1","MT-ND1","MT-CYB","MT-CO3")) %>% filter(category_5prime != "other") %>%
+  group_by(gene_name, category_5prime) %>% summarise(n=n())
+
+
+```
+
+```{r}
+
+# Get difference in poly(A) tail length between categories
+
+df %>% filter(gene_name %in% c("MT-CO1","MT-ND1","MT-CYB","MT-CO3")) %>% filter(category_5prime != "other") %>%
+  group_by(gene_name, category_5prime) %>% summarise(median_polya=median(polya_length)) %>% spread(category_5prime, median_polya) %>%
+  mutate(delta = processed_5prime - unprocessed_5prime)
+
+
+```
+
+
+
+```{r}
+
+# Compare processed and unprocessed distributions using a Wilcoxon rank-sum test
+
+df %>% filter(gene_name %in% c("MT-CO1","MT-ND1","MT-CYB","MT-CO3")) %>% filter(category_5prime != "other") %>%
+  group_by(gene_name) %>% do(w = wilcox.test(polya_length~category_5prime, data=., paired=FALSE)) %>%
+  summarise(gene_name, Wilcox = w$p.value) %>% filter(Wilcox < 0.05)
+
+
+```
+
+
+
+## Poly(A) tail length from 3'-end ligated HeLa samples
+
+```{r}
+
+# Get processing status and poly(A) tail length for each read in 3'-end ligated samples
+
+tot3_process_df = read.table("/path/to/total_RNA_ligation_rep1_read_processing_status.txt", sep="\t", header=T)
+tot4_process_df = read.table("/path/to/total_RNA_ligation_rep2_read_processing_status.txt", sep="\t", header=T)
+
+tot3_nano_df = read.table("/path/to/total_RNA_ligation_rep1_polyA_length.txt", sep="\t", header=T)
+tot4_nano_df = read.table("/path/to/total_RNA_ligation_rep2_polyA_length.txt", sep="\t", header=T)
+
+# Combine replicates
+tot_process_df <- rbind(tot3_process_df,tot4_process_df)
+tot_nano_df <- rbind(tot3_nano_df,tot4_nano_df)
+
+# Merge processing status and poly(A) tail length, filter for reads that end at the transcript end (3'-end processed) and for protein-coding genes on the heavy-strand
+tot_df <- inner_join(tot_process_df, tot_nano_df, by=c("read"="name_read")) %>%
+  dplyr::select(read, gene_name, polya_length,category_5prime, category_3prime) %>%
+  filter(category_3prime == "processed_3prime" & !grepl("RNR", gene_name) & !grepl("MT-T", gene_name) & !grepl("anti", gene_name) & gene_name != "MT-ND6") %>% distinct()
+
+# Order mito transcripts by position on heavy strand
+ordered_mito_gene_list = c('MT-ND1','MT-ND2','MT-CO1','MT-CO2','MT-ATP8-6','MT-CO3','MT-ND3','MT-ND4L-4','MT-ND5','MT-CYB')
+tot_df$gene_name <- factor(tot_df$gene_name, levels=ordered_mito_gene_list)
+
+
+```
+
+
+```{r}
+
+# Plot, with number of reads for each gene
+
+give.n <- function(x){
+  return(c(y = 115, label = length(x))) 
+  # experiment with the multiplier to find the perfect position
+}
+
+tot_df %>%
+  ggplot(aes(x=gene_name, y=polya_length)) + geom_violin() + geom_boxplot(outlier.shape = NA) + theme_bw() + ylim(0,120) +
+  scale_colour_manual(values=c(cbPalette_long)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  stat_summary(fun.data = give.n, geom = "text", fun.y = median, position = position_dodge(width = 0.75), size=3)
+
+
+ggsave("/path/to/mito_polyA_length_HeLa_3prime_lig_violin_and_boxplot.pdf",
+       width = 6,
+    height = 3,
+    units = c("in"))
+
+
+```
+
+
+```{r}
+
+# Make a Supplemental Table with all poly(A) tail lengths, for polyA+ and 3'-end ligated samples
+
+polyA_medians <- df %>% group_by(gene_name) %>% summarise(median_polya_length = median(polya_length)) %>% mutate(library = "polyA_enrichment")
+lig_medians <- tot_df %>% group_by(gene_name) %>% summarise(median_polya_length = median(polya_length)) %>% mutate(library = "3'-end ligation")
+
+supp_table_polyA <- rbind(polyA_medians, lig_medians)
+
+write.table(supp_table_polyA, "/path/to/Supp_Table_median_polyA_length_polyA_enriched_and_3lig_HeLa.txt", sep="\t", row.names=F, col.names=T, quote=F)
+
+```
+
+
+
+```{r}
+
+supp_table_5prime_polyA <- df %>% filter(gene_name %in% c("MT-CO1","MT-ND1","MT-CYB","MT-CO3")) %>% filter(category_5prime != "other") %>%
+  group_by(gene_name, category_5prime) %>% summarise(median=median(polya_length)) %>% spread(category_5prime, median)
+
+
+write.table(supp_table_5prime_polyA, "/path/to/Supp_Table_median_polyA_length_vs_5prime_processing_HeLa_polyA_enriched.txt", sep="\t", row.names=F, col.names=T, quote=F)
+
+```
