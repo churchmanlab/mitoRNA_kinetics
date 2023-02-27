@@ -28,3 +28,6 @@ def res_2models(k, times, model1, model2, lam_obs1, lam_obs2):
     res1 = lam_predict1 - lam_obs1
     res2 = lam_predict2 - lam_obs2
     return res1.append(res2, ignore_index=True)
+
+def calc_res_matrix(params, model, observations, fixed_params):
+    return np.concatenate((model(params, observations, fixed_params) - observations), axis=None)
