@@ -40,48 +40,79 @@ ordered_mito_gene_list = c('MT-ND1','MT-ND2','MT-CO1','MT-CO2','MT-ATP8-6','MT-C
 ```
 
 
-## 5'-end processing
 
 ```{r}
 
-# Load counts from 5'-end processing status, computed on HPC cluster
+# Load per-read 5'-end and 3'-end processing statuses, computed on HPC cluster
 
-NT_counts <- read.table("/path/to/NT_totalRNA_rep1_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-D5_counts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-NT_2_counts <- read.table("/path/to/NT_totalRNA_rep2_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-D5_2_counts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-D5_IP_counts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-D5_IP_2_counts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
-NT_IP_counts <- read.table("/path/to/NT_mitoriboIP_rep1_processed_vs_unprocessed_counts_mito_5prime.txt", sep="\t", header=T)
+NT_process_df <- read.table("/path/to/NT_totalRNA_rep1_read_processing_status.txt", sep="\t", header=T)
+D5_process_df <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_read_processing_status.txt", sep="\t", header=T)
+NT_2_process_df <- read.table("/path/to/NT_totalRNA_rep2_read_processing_status.txt", sep="\t", header=T)
+D5_2_process_df <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_read_processing_status.txt", sep="\t", header=T)
+D5_IP_process_df <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_read_processing_status.txt", sep="\t", header=T)
+NT_IP_process_df <- read.table("/path/to/NT_mitoriboIP_rep1_read_processing_status.txt", sep="\t", header=T)
+D5_IP_2_process_df <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_read_processing_status.txt", sep="\t", header=T)
+
 
 # Add variables for condition, replicate and RNA isolation method
-NT_counts$condition <- "NT"
-D5_counts$condition <- "FASTKD5_KO"
-NT_2_counts$condition <- "NT"
-D5_2_counts$condition <- "FASTKD5_KO"
-NT_IP_counts$condition <- "NT"
-D5_IP_counts$condition <- "FASTKD5_KO"
-D5_IP_2_counts$condition <- "FASTKD5_KO"
+NT_process_df$condition <- "NT"
+D5_process_df$condition <- "FASTKD5_KO"
+NT_2_process_df$condition <- "NT"
+D5_2_process_df$condition <- "FASTKD5_KO"
+NT_IP_process_df$condition <- "NT"
+D5_IP_process_df$condition <- "FASTKD5_KO"
+D5_IP_2_process_df$condition <- "FASTKD5_KO"
 
-NT_counts$replicate <- "rep1"
-D5_counts$replicate <- "rep1"
-NT_2_counts$replicate <- "rep2"
-D5_2_counts$replicate <- "rep2"
-NT_IP_counts$replicate <- "rep1"
-D5_IP_counts$replicate <- "rep1"
-D5_IP_2_counts$replicate <- "rep2"
+NT_process_df$replicate <- "rep1"
+D5_process_df$replicate <- "rep1"
+NT_2_process_df$replicate <- "rep2"
+D5_2_process_df$replicate <- "rep2"
+NT_IP_process_df$replicate <- "rep1"
+D5_IP_process_df$replicate <- "rep1"
+D5_IP_2_process_df$replicate <- "rep2"
 
-NT_counts$RNA <- "total"
-D5_counts$RNA <- "total"
-NT_2_counts$RNA <- "total"
-D5_2_counts$RNA <- "total"
-NT_IP_counts$RNA <- "IP"
-D5_IP_counts$RNA <- "IP"
-D5_IP_2_counts$RNA <- "IP"
-
+NT_process_df$RNA <- "total"
+D5_process_df$RNA <- "total"
+NT_2_process_df$RNA <- "total"
+D5_2_process_df$RNA <- "total"
+NT_IP_process_df$RNA <- "IP"
+D5_IP_process_df$RNA <- "IP"
+D5_IP_2_process_df$RNA <- "IP"
 
 # Combine all samples
-counts_df <- rbind(NT_counts,D5_counts,NT_2_counts,D5_2_counts,NT_IP_counts,D5_IP_counts,D5_IP_2_counts)
+process_df <- rbind(NT_process_df, D5_process_df,NT_2_process_df,D5_2_process_df,NT_IP_process_df,D5_IP_process_df,D5_IP_2_process_df) %>% unite(sample_name, c("condition","replicate"), sep=",", remove=F)
+process_df$condition <- factor(process_df$condition, levels=c("NT","FASTKD5_KO","NT_IP","FASTKD5_KO_IP"))
+
+
+```
+
+```{r}
+
+# Get list of "split" reads for each sample
+NT_split_reads <- read.table("/path/to/NT_totalRNA_rep1_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+D5_split_reads <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+NT_2_split_reads <- read.table("/path/to/NT_totalRNA_rep2_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+D5_2_split_reads <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+D5_IP_split_reads <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+NT_IP_split_reads <- read.table("/path/to/NT_mitoriboIP_rep1_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+D5_IP_2_split_reads <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_HeLa_MT_genome_minimap2_sort.split_reads.txt", sep=" ", header=F)
+
+
+split_reads <- rbind(NT_split_reads, D5_split_reads,NT_2_split_reads,D5_2_split_reads,NT_IP_split_reads,D5_IP_split_reads,D5_IP_2_split_reads)
+colnames(split_reads) <- c("readname","split")
+
+# Exclude split reads from processing analyses
+process_df_clean <- filter(process_df, read %!in% split_reads$readname)
+
+
+```
+
+```{r}
+
+# Count processed and unprocessed reads
+counts_df <- process_df_clean %>% filter(category_5prime != "other" & !grepl("anti",gene_name)) %>%
+  group_by(sample_name, condition, replicate, RNA, gene_name, category_5prime) %>% summarise(n_reads = n()) %>%
+  spread(category_5prime, n_reads) %>% mutate(processed_5prime = replace_na(processed_5prime, 0), unprocessed_5prime = replace_na(unprocessed_5prime, 0))
 
 # Calculate ratio of unprocessed reads for each gene
 counts_df <- counts_df %>% mutate(ratio = unprocessed_5prime / (processed_5prime + unprocessed_5prime)) %>% filter(gene_name != "MT-ND6")
@@ -105,10 +136,100 @@ counts_df_avg %>%
 
 ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_total_vs_IP.pdf",
        width = 6,
-    height = 4,
+    height = 3,
     units = c("in"))
 
+
 ```
+
+```{r}
+
+# Load genomic coordinates of read starts (5'-ends of reads), computed on HPC cluster
+
+NT_read_starts <- read.table("/path/to/NT_totalRNA_rep1_read_starts.txt", sep="\t", header=T)
+D5_read_starts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_read_starts.txt", sep="\t", header=T)
+NT_2_read_starts <- read.table("/path/to/NT_totalRNA_rep2_read_starts.txt", sep="\t", header=T)
+D5_2_read_starts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_read_starts.txt", sep="\t", header=T)
+NT_IP_read_starts <- read.table("/path/to/NT_mitoriboIP_rep1_read_starts.txt", sep="\t", header=T)
+D5_IP_read_starts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_read_starts.txt", sep="\t", header=T)
+D5_IP_2_read_starts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_read_starts.txt", sep="\t", header=T)
+
+# Add variables for condition, replicate and RNA isolation method
+NT_read_starts$condition <- "NT"
+D5_read_starts$condition <- "FASTKD5_KO"
+NT_2_read_starts$condition <- "NT"
+D5_2_read_starts$condition <- "FASTKD5_KO"
+NT_IP_read_starts$condition <- "NT"
+D5_IP_read_starts$condition <- "FASTKD5_KO"
+D5_IP_2_read_starts$condition <- "FASTKD5_KO"
+
+NT_read_starts$replicate <- "rep1"
+D5_read_starts$replicate <- "rep1"
+NT_2_read_starts$replicate <- "rep2"
+D5_2_read_starts$replicate <- "rep2"
+NT_IP_read_starts$replicate <- "rep1"
+D5_IP_read_starts$replicate <- "rep1"
+D5_IP_2_read_starts$replicate <- "rep2"
+
+NT_read_starts$RNA <- "total"
+D5_read_starts$RNA <- "total"
+NT_2_read_starts$RNA <- "total"
+D5_2_read_starts$RNA <- "total"
+NT_IP_read_starts$RNA <- "IP"
+D5_IP_read_starts$RNA <- "IP"
+D5_IP_2_read_starts$RNA <- "IP"
+
+# Combine samples and exclude split reads
+read_starts <- rbind(NT_read_starts,NT_2_read_starts,D5_read_starts,D5_2_read_starts,NT_IP_read_starts,D5_IP_read_starts,D5_IP_2_read_starts) %>% filter(name_read %!in% split_reads$readname)
+
+# Reorder variables
+read_starts$condition <- factor(read_starts$condition, levels=c("NT","FASTKD5_KO","NT_IP","FASTKD5_KO_IP"))
+
+# Add a feature for anti-MT-TQ (was not present in the annotation used for intersecting read starts)
+read_starts <- read_starts %>%
+  mutate(name_gene = case_when(end_read > 4330 & end_read <= 4401 & biotype_feature == "intergenic" ~ "antiMT-TQ",
+                               TRUE ~ name_gene),
+         name_feature = case_when(end_read > 4330 & end_read <= 4401 & biotype_feature == "intergenic" ~ "gene_body",
+                               TRUE ~ name_feature))
+
+
+```
+
+```{r}
+
+# Reformat dataframe and filter: select reads that are unprocessed at the 5'-end and that start in the gene body of a transcript. 
+# Restrict read starts that are located upstream of the end of the gene of interest -> this is necessary to exclude reads that map in two areas of the genome
+
+read_starts_filt <- read_starts %>% inner_join(process_df_clean, by=c("name_read"="read","condition","replicate","RNA")) %>% 
+  filter(category_5prime == "unprocessed_5prime" & name_feature == "gene_body") %>%
+  mutate(new_category = case_when(gene_name == "MT-ND1" & end_read < 3304 & name_gene == "MT-TL1" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-ND2" & end_read < 4469 & name_gene == "MT-TM" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-ND4L-4" & end_read < 10469 & name_gene == "MT-TR" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-CO2" & end_read < 7585 & name_gene == "MT-TD" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-ATP8-6" & end_read < 8364 & name_gene == "MT-TK" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-ND3" & end_read < 10058 & name_gene == "MT-TG" ~ "1st_tRNA_5prime",
+                                  gene_name == "MT-ND5" & end_read < 12336 & name_gene == "MT-TL2" ~ "1st_tRNA_5prime",
+                                  TRUE ~ "other")) %>% 
+  group_by(condition, replicate, RNA, gene_name, new_category) %>% summarise(n=n()) %>% group_by(condition, replicate, RNA, gene_name) %>% mutate(freq=n/sum(n)) %>% filter(new_category != "other") %>%
+  dplyr::select(-new_category, -n)
+
+
+counts_and_read_starts <- counts_df %>% left_join(read_starts_filt, by=c("condition","RNA","gene_name","replicate")) %>% mutate(freq = replace_na(freq, 0)) %>%
+  mutate(new_freq = freq * ratio)
+counts_and_read_starts_avg <- counts_and_read_starts %>% group_by(condition, RNA, gene_name) %>% summarise(avg_freq = mean(new_freq))
+
+
+counts_and_read_starts$gene_name <- factor(counts_and_read_starts$gene_name, levels=ordered_mito_gene_list)
+counts_and_read_starts$condition <- factor(counts_and_read_starts$condition, levels=c("NT","FASTKD5_KO"))
+counts_and_read_starts$RNA <- factor(counts_and_read_starts$RNA, levels=c("total","IP"))
+
+counts_and_read_starts_avg$gene_name <- factor(counts_and_read_starts_avg$gene_name, levels=ordered_mito_gene_list)
+counts_and_read_starts_avg$condition <- factor(counts_and_read_starts_avg$condition, levels=c("NT","FASTKD5_KO"))
+counts_and_read_starts_avg$RNA <- factor(counts_and_read_starts_avg$RNA, levels=c("total","IP"))
+
+
+```
+
 
 
 
@@ -118,15 +239,20 @@ ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_total_vs_IP.pd
 
 counts_df_avg_D5 <- counts_df_avg %>% filter(condition == "FASTKD5_KO")
 counts_df_D5 <- counts_df %>% filter(condition == "FASTKD5_KO")
+counts_and_read_starts_D5 <- counts_and_read_starts %>% filter(condition == "FASTKD5_KO")
+counts_and_read_starts_avg_D5 <- counts_and_read_starts_avg %>% filter(condition == "FASTKD5_KO")
 
 counts_df_avg_D5 %>%
   ggplot(aes(x=gene_name, y=mean_ratio, fill=RNA)) + geom_bar(stat="identity", position="dodge") + theme_bw() + scale_fill_manual(values=c("#999999",cbPalette_long[2],cbPalette_long[6])) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ylab("fraction of 5' unprocessed reads") +
   geom_point(data=counts_df_D5, aes(x=gene_name, y=ratio, group=RNA), 
+             position = position_dodge(width = 0.9), size=1) + ylim(0,1) +
+  geom_bar(data = counts_and_read_starts_avg_D5, aes(x=gene_name, y=avg_freq, color=RNA), stat="identity", position="dodge") + scale_color_manual(values=c("#000000","#000000")) +
+  geom_point(data=counts_and_read_starts_D5, aes(x=gene_name, y=new_freq, group=RNA), shape=2, 
              position = position_dodge(width = 0.9), size=1)
 
 
-ggsave("/path/to/figures/5prime_processing_proportions_total_vs_IP_FASTKD5_only.pdf",
+ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_total_vs_IP_FASTKD5_only.pdf",
        width = 6,
     height = 3,
     units = c("in"))
@@ -141,15 +267,20 @@ ggsave("/path/to/figures/5prime_processing_proportions_total_vs_IP_FASTKD5_only.
 
 counts_df_avg_NT <- counts_df_avg %>% filter(condition == "NT")
 counts_df_NT <- counts_df %>% filter(condition == "NT")
+counts_and_read_starts_NT <- counts_and_read_starts %>% filter(condition == "NT")
+counts_and_read_starts_avg_NT <- counts_and_read_starts_avg %>% filter(condition == "NT")
 
 counts_df_avg_NT %>%
   ggplot(aes(x=gene_name, y=mean_ratio, fill=RNA)) + geom_bar(stat="identity", position="dodge") + theme_bw() + scale_fill_manual(values=c("#999999",cbPalette_long[2],cbPalette_long[6])) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ylab("fraction of 5' unprocessed reads") +
   geom_point(data=counts_df_NT, aes(x=gene_name, y=ratio, group=RNA), 
-             position = position_dodge(width = 0.9), size=1) + ylim(0,0.8)
+             position = position_dodge(width = 0.9), size=1) + ylim(0,1) +
+  geom_bar(data = counts_and_read_starts_avg_NT, aes(x=gene_name, y=avg_freq, color=RNA), stat="identity", position="dodge") + scale_color_manual(values=c("#000000","#000000")) +
+  geom_point(data=counts_and_read_starts_NT, aes(x=gene_name, y=new_freq, group=RNA), shape=2, 
+             position = position_dodge(width = 0.9), size=1)
 
 
-ggsave("/path/to/figures/5prime_processing_proportions_total_vs_IP_NT_only.pdf",
+ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_total_vs_IP_NT_only.pdf",
        width = 6,
     height = 3,
     units = c("in"))
@@ -158,45 +289,6 @@ ggsave("/path/to/figures/5prime_processing_proportions_total_vs_IP_NT_only.pdf",
 ```
 
 
-## Processing at both ends
-
-```{r}
-
-# Load per-read 5'-end and 3'-end processing statuses, computed on HPC cluster
-
-NT_process_df <- read.table("/path/to/NT_totalRNA_rep1_read_processing_status.txt", sep="\t", header=T)
-D5_process_df <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_read_processing_status.txt", sep="\t", header=T)
-NT_2_process_df <- read.table("/path/to/NT_totalRNA_rep2_read_processing_status.txt", sep="\t", header=T)
-D5_2_process_df <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_read_processing_status.txt", sep="\t", header=T)
-D5_IP_process_df <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_read_processing_status.txt", sep="\t", header=T)
-NT_IP_process_df <- read.table("/path/to/NT_mitoriboIP_rep1_read_processing_status.txt", sep="\t", header=T)
-D5_IP_2_process_df <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_read_processing_status.txt", sep="\t", header=T)
-
-
-# Add variables for condition and replicate
-NT_process_df$condition <- "NT"
-D5_process_df$condition <- "FASTKD5_KO"
-NT_2_process_df$condition <- "NT"
-D5_2_process_df$condition <- "FASTKD5_KO"
-NT_IP_process_df$condition <- "NT_IP"
-D5_IP_process_df$condition <- "FASTKD5_KO_IP"
-D5_IP_2_process_df$condition <- "FASTKD5_KO_IP"
-
-NT_process_df$replicate <- "rep1"
-D5_process_df$replicate <- "rep1"
-NT_2_process_df$replicate <- "rep2"
-D5_2_process_df$replicate <- "rep2"
-NT_IP_process_df$replicate <- "rep1"
-D5_IP_process_df$replicate <- "rep1"
-D5_IP_2_process_df$replicate <- "rep2"
-
-# Combine all samples
-process_df <- rbind(NT_process_df, D5_process_df,NT_2_process_df,D5_2_process_df,NT_IP_process_df,D5_IP_process_df,D5_IP_2_process_df) %>% unite(sample_name, c("condition","replicate"), sep=",", remove=F)
-process_df$condition <- factor(process_df$condition, levels=c("NT","FASTKD5_KO","NT_IP","FASTKD5_KO_IP"))
-
-
-```
-
 
 
 ```{r}
@@ -204,22 +296,19 @@ process_df$condition <- factor(process_df$condition, levels=c("NT","FASTKD5_KO",
 # Analyze the 5'-end and 3'-end processing statuses for CO1
 
 # Reformat dataframe and filter
-process_df_CO1_bis <- process_df %>%
-  group_by(condition, replicate, gene_name, category_5prime, category_3prime) %>% summarise(n=n()) %>% 
+process_df_CO1_bis <- process_df_clean %>%
+  group_by(condition, replicate, RNA, gene_name, category_5prime, category_3prime) %>% summarise(n=n()) %>% 
   filter(gene_name == "MT-CO1" & category_3prime %!in% c("unprocessed_3prime","other") & category_5prime != "other") %>%
   unite(category, c("category_3prime","category_5prime"), sep=",") %>%
-  group_by(condition, replicate, gene_name) %>% mutate(freq = n/sum(n)) %>%
-  mutate(RNA = case_when(grepl("IP", condition) ~ "IP",
-                         TRUE ~ "total")) %>%
-  separate(condition, c("condition"), sep="_", extra="drop")
+  group_by(condition, replicate, RNA, gene_name) %>% mutate(freq = n/sum(n))
 
 # Calculate average per condition
 process_df_CO1_bis_avg <- process_df_CO1_bis %>% group_by(condition, gene_name, category, RNA) %>% summarise(avg_freq = mean(freq))
 
 # Convert to factor to get the correct ordering
-process_df_CO1_bis$condition <- factor(process_df_CO1_bis$condition, levels=c("NT","FASTKD5"))
+process_df_CO1_bis$condition <- factor(process_df_CO1_bis$condition, levels=c("NT","FASTKD5_KO"))
 process_df_CO1_bis$RNA <- factor(process_df_CO1_bis$RNA, levels=c("total","IP"))
-process_df_CO1_bis_avg$condition <- factor(process_df_CO1_bis_avg$condition, levels=c("NT","FASTKD5"))
+process_df_CO1_bis_avg$condition <- factor(process_df_CO1_bis_avg$condition, levels=c("NT","FASTKD5_KO"))
 process_df_CO1_bis_avg$RNA <- factor(process_df_CO1_bis_avg$RNA, levels=c("total","IP"))
 process_df_CO1_bis_avg$category <- factor(process_df_CO1_bis_avg$category, levels=c("transcribing,unprocessed_5prime","processed_3prime,unprocessed_5prime","transcribing,processed_5prime","processed_3prime,processed_5prime"))
 process_df_CO1_bis$category <- factor(process_df_CO1_bis$category, levels=c("transcribing,unprocessed_5prime","processed_3prime,unprocessed_5prime","transcribing,processed_5prime","processed_3prime,processed_5prime"))
@@ -232,7 +321,7 @@ process_df_CO1_bis_avg %>%
              position = position_dodge(width = 0.9), size=1) +
   ylab("proportion of reads") + ggtitle("MT-CO1")
 
-ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_vs_3prime_end_status_total_vs_IP.pdf",
+ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_vs_3prime_end_status_total_vs_IP_explicit.pdf",
        width = 6.5,
     height = 3,
     units = c("in"))
@@ -246,7 +335,7 @@ ggsave("/path/to/figures/FASTKD5_KO_5prime_processing_proportions_vs_3prime_end_
 
 NT_read_ends <- read.table("/path/to/NT_totalRNA_rep1_read_ends.txt", sep="\t", header=T)
 D5_read_ends <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_read_ends.txt", sep="\t", header=T)
-NT_2_read_ends <- read.table("/path/to/NT_totalRNA_rep2_rep2_read_ends.txt", sep="\t", header=T)
+NT_2_read_ends <- read.table("/path/to/NT_totalRNA_rep2_read_ends.txt", sep="\t", header=T)
 D5_2_read_ends <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_read_ends.txt", sep="\t", header=T)
 NT_IP_read_ends <- read.table("/path/to/NT_mitoriboIP_rep1_read_ends.txt", sep="\t", header=T)
 D5_IP_read_ends <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_read_ends.txt", sep="\t", header=T)
@@ -271,9 +360,10 @@ D5_IP_read_ends$replicate <- "rep1"
 D5_IP_2_read_ends$replicate <- "rep2"
 
 # Combine all samples and keep only protein-coding genes and reads that end within their gene body or 3'-end
+# Exclude split reads
 read_ends <- rbind(NT_read_ends,NT_2_read_ends,D5_read_ends,D5_2_read_ends,NT_IP_read_ends,D5_IP_read_ends,D5_IP_2_read_ends) %>% unite(sample_name, c("condition","replicate"),sep="__", remove=F) %>%
   filter(!grepl("MT-T",name_gene) & name_feature != "intergenic" & biotype_feature == "protein_coding" & !grepl("MT-RNR",name_gene) & strand_feature == "+" & name_gene != "HSP1") %>%
-  filter(name_feature == "gene_body" |  name_feature == "3prime_end")
+  filter(name_feature == "gene_body" |  name_feature == "3prime_end") %>% filter(name_read %!in% split_reads$readname)
 
 # Re-order variables
 read_ends$condition <- factor(read_ends$condition, levels=c("NT","FASTKD5_KO","NT_IP","FASTKD5_KO_IP"))
@@ -297,108 +387,4 @@ ggsave("/path/to/figures/FASTKD5_KO_3prime_position_CDF_total_vs_IP.pdf",
 
 
 ```
-
-```{r}
-
-# Load genomic coordinates of read starts (5'-ends of reads), computed on HPC cluster
-
-NT_read_starts <- read.table("/path/to/NT_totalRNA_rep1_read_starts.txt", sep="\t", header=T)
-D5_read_starts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep1_read_starts.txt", sep="\t", header=T)
-NT_2_read_starts <- read.table("/path/to/NT_totalRNA_rep2_rep2_read_starts.txt", sep="\t", header=T)
-D5_2_read_starts <- read.table("/path/to/FASTKD5_KO_totalRNA_rep2_read_starts.txt", sep="\t", header=T)
-NT_IP_read_starts <- read.table("/path/to/NT_mitoriboIP_rep1_read_starts.txt", sep="\t", header=T)
-D5_IP_read_starts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep1_read_starts.txt", sep="\t", header=T)
-D5_IP_2_read_starts <- read.table("/path/to/FASTKD5_KO_mitoriboIP_rep2_read_starts.txt", sep="\t", header=T)
-
-# Add variables for condition and replicate
-NT_read_starts$condition <- "NT"
-D5_read_starts$condition <- "FASTKD5_KO"
-NT_2_read_starts$condition <- "NT"
-D5_2_read_starts$condition <- "FASTKD5_KO"
-NT_IP_read_starts$condition <- "NT_IP"
-D5_IP_read_starts$condition <- "FASTKD5_KO_IP"
-D5_IP_2_read_starts$condition <- "FASTKD5_KO_IP"
-
-NT_read_starts$replicate <- "rep1"
-D5_read_starts$replicate <- "rep1"
-NT_2_read_starts$replicate <- "rep2"
-D5_2_read_starts$replicate <- "rep2"
-NT_IP_read_starts$replicate <- "rep1"
-D5_IP_read_starts$replicate <- "rep1"
-D5_IP_2_read_starts$replicate <- "rep2"
-
-# Combine samples
-read_starts <- rbind(NT_read_starts,NT_2_read_starts,D5_read_starts,D5_2_read_starts,NT_IP_read_starts,D5_IP_read_starts,D5_IP_2_read_starts) %>% unite(sample_name, c("condition","replicate"),sep="__", remove=F)
-
-# Reorder variables
-read_starts$condition <- factor(read_starts$condition, levels=c("NT","FASTKD5_KO","NT_IP","FASTKD5_KO_IP"))
-
-# Add a feature for anti-MT-TQ (was not present in the annotation used for intersecting read starts)
-read_starts <- read_starts %>%
-  mutate(name_gene = case_when(end_read > 4330 & end_read <= 4401 & biotype_feature == "intergenic" ~ "antiMT-TQ",
-                               TRUE ~ name_gene),
-         name_feature = case_when(end_read > 4330 & end_read <= 4401 & biotype_feature == "intergenic" ~ "gene_body",
-                               TRUE ~ name_feature))
-
-
-```
-
-```{r}
-
-# Reformat dataframe and filter: select reads that are unprocessed at the 5'-end and that start in the gene body of a transcript. 
-# Restrict read starts that are located upstream of the end of the gene of interest -> this is necessary to exclude reads that map in two areas of the genome
-
-read_starts_filt <- read_starts %>% inner_join(process_df, by=c("name_read"="read","condition","replicate")) %>% 
-  filter(category_5prime == "unprocessed_5prime" & name_feature == "gene_body") %>%
-  filter((gene_name == "MT-ND1" & end_read < 3304) | (gene_name == "MT-ND2" & end_read < 4469) | (gene_name == "MT-CO3" & end_read < 9206) | (gene_name == "MT-CYB" & end_read < 14746)) %>%
-  arrange(name_read, desc(start_read)) %>% distinct(condition, replicate, name_read, .keep_all = TRUE) %>%
-  mutate(name_gene_2 = case_when(name_gene %in% c("MT-RNR2","MT-TL1","MT-ND1","MT-TM","MT-TI","antiMT-TQ","MT-ATP8-6","MT-ND5") ~ name_gene,
-                                 TRUE ~ "other")) %>%
-  group_by(condition, replicate, name_gene_2, gene_name) %>% summarise(n=n()) %>% group_by(condition, replicate, gene_name) %>% mutate(freq = n/sum(n)) %>%
-  mutate(RNA = case_when(grepl("IP", condition) ~ "mito-ribo-IP",
-                         TRUE ~ "total")) %>%
-  separate(condition, c("condition"), sep="_", extra="drop") %>%
-  unite(sample_name, c("condition","replicate"), sep="_") 
-
-# Reorder variables
-read_starts_filt$RNA <- factor(read_starts_filt$RNA, levels=c("total","mito-ribo-IP"))
-read_starts_filt$gene_name <- factor(read_starts_filt$gene_name, levels=c("MT-ND1","MT-ND2","MT-CO3","MT-CYB"))
-read_starts_filt$name_gene_2<- factor(read_starts_filt$name_gene_2, levels=c("MT-RNR2","MT-TL1","MT-ND1","MT-TI","antiMT-TQ","MT-TM","MT-ATP8-6","MT-ND5","other"))
-read_starts_filt$sample_name <- factor(read_starts_filt$sample_name, levels=c("NT_rep1","NT_rep2","FASTKD5_rep1","FASTKD5_rep2"))
-
-```
-
-```{r}
-
-# Make new categories that distinguish the tRNA/mRNA immediately upstream of the gene of interest vs. genes that are further upstream
-read_starts_filt %>%
-  mutate(new_category = case_when(gene_name == "MT-ND1" & name_gene_2 == "MT-TL1" ~ "1st_tRNA_5prime",
-                                  gene_name == "MT-ND1" & name_gene_2 != "MT-TL1" ~ "further_upstream",
-                                  gene_name == "MT-ND2" & name_gene_2 == "MT-TM" ~ "1st_tRNA_5prime",
-                                  gene_name == "MT-ND2" & name_gene_2 != "MT-TM" ~ "further_upstream",
-                                  gene_name == "MT-CO3" & name_gene_2 == "MT-ATP8-6" ~ "1st_mRNA_5prime",
-                                  gene_name == "MT-CO3" & name_gene_2 != "MT-ATP8-6" ~ "further_upstream",
-                                  gene_name == "MT-CYB" & name_gene_2 == "MT-ND5" ~ "1st_mRNA_5prime",
-                                  gene_name == "MT-CYB" & name_gene_2 != "MT-ND5" ~ "further_upstream")) %>%
-  group_by(sample_name, RNA, gene_name, new_category) %>% summarise(n_reads = sum(n)) %>%
-  ggplot(aes(x=sample_name, y=n_reads, fill=new_category)) + geom_bar(stat="identity", position="fill") + theme_bw() + 
-  scale_fill_manual(values=c(cbPalette_long)) + facet_wrap(gene_name~RNA, ncol=2, scales="free_x") + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + ylab("number of unprocessed reads")
-
-ggsave("/path/to/figures/FASTKD5_KO_unprocessed_read_starts_all_other_direction.pdf",
-       width = 5,
-    height = 9,
-    units = c("in"))
-
-```
-
-
-
-
-
-
-
-
-
-
 
