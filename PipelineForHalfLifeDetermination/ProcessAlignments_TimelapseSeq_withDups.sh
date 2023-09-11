@@ -55,9 +55,9 @@ fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/HEK293T_ensGRCh38_h_M
 elif [ "${data}" = "K562" ]
 then
 fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_dm6_ercc_cat.fasta'
-elif [ "${data}" = "mouse" ]
+elif [ "${data}" = "NIH3T3" ]
 then
-fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/mouseNIH3T3_mm10_dm6_ercc_cat.fasta'
+fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/NIH3T3_mm10_dm6_ercc_cat.fasta'
 fi
 
 
