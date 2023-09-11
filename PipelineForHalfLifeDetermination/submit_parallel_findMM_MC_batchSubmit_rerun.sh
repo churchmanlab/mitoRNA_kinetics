@@ -27,18 +27,19 @@ prefix=$1
 genome=$2
 
 
-if [ "${genome}" = "Hela" ]
+# Set path to fasta
+if [ "${data}" = "Hela" ]
 then
-fastapath="/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta"
-elif [ "${genome}" = "HEK" ]
+fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta'
+elif [ "${data}" = "HEK" ]
 then
-fastapath="/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta"
-elif [ "${genome}" = "K562" ]
+fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta'
+elif [ "${data}" = "K562" ]
 then
-fastapath="/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_dm6_ercc_cat.fasta"
-elif [ "${genome}" = "mouse" ]
+fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_dm6_ercc_cat.fasta'
+elif [ "${data}" = "NIH3T3" ]
 then
-fastapath="/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/mouseNIH3T3_mm10_dm6_ercc_cat.fasta"
+fastapath='/n/groups/churchman/mc348/TimelapseSeq/SeqFiles/NIH3T3_mm10_dm6_ercc_cat.fasta'
 fi
 
 
