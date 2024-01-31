@@ -15,8 +15,9 @@ ExpName=$1 # TL4_MT TL3_MT TL3_SpikeOnly MUT-TL3_0m-0.1 K562_J_MT TL5_tot_MT TL7
 MapMethod=$2 # t5MTMMinformed6_MT MMinformed4 t5MTMMinformed6 t5MMinformed5
 data=$3 # Hela K562 HelaOld HelaCtoT
 Set=$4
-makeCIT=$5
-dirName=$6 # PcModInput PcModErik1 ErikPcTot1
+use=$5 # double or all
+makeCIT=$6
+dirName=$7 # PcModInput PcModErik1 ErikPcTot1
 
 module load gcc/6.2.0
 module load java/jdk-1.8u112
@@ -101,9 +102,91 @@ export PATH=$PATH:/n/groups/churchman/mc348/TimelapseSeq/Scripts/GRAND-SLAM_2.0.
 # mkdir GRAND_SLAM_mouse3T3_mm10_dm6 
 # sbatch -p short -t 0-06:00 --mem=80G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/mouseNIH3T3_mm10_dm6_ercc_cat.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/mouseNIH3T3_mm10_MTmod_dm6_ercc_cat.gtf -n mouseNIH3T3_mm10_MTmod_dm6_ercc_cat -D -f GRAND_SLAM_mouse3T3_mm10_dm6 -nobowtie -nokallisto -nostar"
 
+# 8/17/23 hg38 reference genome, not snp-masked
+# mkdir GRAND_SLAM_ensGRCh38_h_MT 
+# sbatch -p short -t 0-06:00 --mem=80G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/../SeqFiles/ensGRCh38_h_MT_ncRNAs_allERCC_merge.formatted.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod -D -f GRAND_SLAM_ensGRCh38_h_MT -nobowtie -nokallisto -nostar"
+
+# 8/22/23 Hela reference genome, newly snp-masked using more bam files
+# mkdir GRAND_SLAM_HelaSNPmasked 
+# sbatch -p short -t 0-06:00 --mem=80G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/../SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod_2 -D -f GRAND_SLAM_HelaSNPmasked -nobowtie -nokallisto -nostar"
+
+# 8/22/23 Hela reference genome, newly snp-masked ONLY, skip INDEL update step using more bam files
+# mkdir GRAND_SLAM_HelaSNPnoINDEL
+# sbatch -p short -t 0-06:00 --mem=80G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/../SeqFiles/ensGRCh38_h_MT_ncRNAs_allERCC_merge.HelasnpCor.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod_2 -D -f GRAND_SLAM_HelaSNPnoINDEL -nobowtie -nokallisto -nostar"
+
+# 8/28/23 New Hela reference genome, after fixing rf2m script, also higher quality score cutoff for SNPs and INDELs
+# mkdir GRAND_SLAM_Hela_HighqualSNVs
+# sbatch -p short -t 0-06:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_HighqualSNVs.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod_HighqualSNVs.gtf -n Hela_HighqualSNVs -D -f GRAND_SLAM_Hela_HighqualSNVs -nobowtie -nokallisto -nostar"
+
+
+# 8/31/23 New Hela reference genome, after fixing rf2m script, also higher quality score cutoff for SNPs and INDELs, and using only primary reads to call SNVs
+# mkdir GRAND_SLAM_Hela_PrimaryHighestqualSNVs
+# sbatch -p short -t 0-06:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_PrimaryHighestqualSNVs.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod_PrimaryHighestqualSNVs.gtf -n Hela_PrimaryHighestqualSNVs -D -f GRAND_SLAM_Hela_PrimaryHighestqualSNVs -nobowtie -nokallisto -nostar"
+
+# 9/1/23 New Hela reference genome, after fixing rf2m script, and adding some extra filtering as well as using only primary alignments
+# mkdir GRAND_SLAM_Hela
+# sbatch -p short -t 0-06:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n Hela -D -f GRAND_SLAM_Hela -nobowtie -nokallisto -nostar"
+
+# mkdir GRAND_SLAM_HEK293T
+# sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n HEK293T -D -f GRAND_SLAM_HEK293T -nobowtie -nokallisto -nostar"
+
+# 10/20/23 Try modifying reference genome (AFTER alignment) to trick GS into using C > T conversions too
+# didn't work with GS
+
+# 10/24/23 Try modifying reference genome (AFTER alignment) to convert only the Cs that were part of a CT conversion based on bam files
+# mkdir GRAND_SLAM_Hela_CTtoTC
+# sbatch -p short -t 0-06:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_CTtoTC.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n Hela_CTtoTC -D -f GRAND_SLAM_Hela_CTtoTC -nobowtie -nokallisto -nostar"
+
+mkdir GRAND_SLAM_Hela_CTtoTC
+sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_CTtoTC_B.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n Hela_CTtoTC_B -D -f GRAND_SLAM_Hela_CTtoTC -nobowtie -nokallisto -nostar"
+# # 
+# mkdir GRAND_SLAM_Hela_CTtoTCandTCtoCT
+# sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_CTtoTCandTCtoCT.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod.gtf -n Hela_CTtoTCandTCtoCT -D -f GRAND_SLAM_Hela_CTtoTCandTCtoCT -nobowtie -nokallisto -nostar"
+# 
+# mkdir GRAND_SLAM_K562_dm6
+# sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_dm6_ercc_cat.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_MTmod_dm6_ercc_cat.gtf -n K562_dm6 -D -f GRAND_SLAM_K562_dm6 -nobowtie -nokallisto -nostar"
+# 
+# mkdir GRAND_SLAM_NIH3T3_dm6
+# sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/NIH3T3_mm10_dm6_ercc_cat.fasta -a /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/NIH3T3_mm10_MTmod_dm6_ercc_cat.gtf -n NIH3T3_dm6 -D -f GRAND_SLAM_NIH3T3_dm6 -nobowtie -nokallisto -nostar"
+
+# mkdir GRAND_SLAM_K562_genetoexon_dm6
+# sbatch -p short -t 0-01:00 --mem=70G --wrap="gedi -e IndexGenome -s /n/groups/churchman/mc348/TimelapseSeq/SeqFiles/K562_ensGRCh38_dm6_ercc_cat.fasta -a /n/groups/churchman/ri23/bseq/GS20240126/K562_ensGRCh38_MTmod_dm6_ercc_cat_genes_only.gtf -n K562_genetoexon_dm6 -D -f GRAND_SLAM_K562_genetoexon_dm6 -nobowtie -nokallisto -nostar"
+
+
 #############################################################
 #############################################################
-if [ "${data}" = "Hela" ]
+if [ "${data}" = "null" ]
+then
+genomeIndex="ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod"
+
+elif [ "${data}" = "Hela" ]
+then
+genomeIndex="Hela"
+
+elif [ "${data}" = "Hela_CTtoTC_B" ]
+then
+genomeIndex="Hela_CTtoTC_B"
+
+elif [ "${data}" = "Hela_CTtoTCandTCtoCT" ]
+then
+genomeIndex="Hela_CTtoTCandTCtoCT"
+
+elif [ "${data}" = "Hela_CTtoTC_0uM" ]
+then
+genomeIndex="Hela_CTtoTC_0uM"
+
+elif [ "${data}" = "Hela_PrimaryHighestqualSNVs" ]
+then
+genomeIndex="Hela_PrimaryHighestqualSNVs"
+
+elif [ "${data}" = "Hela_HighqualSNVs" ]
+then
+genomeIndex="Hela_HighqualSNVs"
+
+elif [ "${data}" = "HelaSNPnoINDEL" ]
+then
+genomeIndex="ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod_2"
+elif [ "${data}" = "oldHela" ]
 then
 genomeIndex="Hela_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod"
 elif [ "${data}" = "HelaCtoT" ]
@@ -115,9 +198,9 @@ genomeIndex="ensGRCh38_h_MTsnp_ncRNAs_allERCC_merge_fuse_aMito"
 elif [ "${data}" = "K562" ]
 then
 genomeIndex="K562_ensGRCh38_MTmod_dm6_ercc_cat"
-elif [ "${data}" = "HEK" ]
+elif [ "${data}" = "HEK293T" ]
 then
-genomeIndex="HEK293T_ensGRCh38_h_MT_ncRNAs_allERCC_merge_MTmod"
+genomeIndex="HEK293T"
 elif [ "${data}" = "mouse" ]
 then
 genomeIndex="mouseNIH3T3_mm10_MTmod_dm6_ercc_cat"
@@ -129,17 +212,37 @@ then
 bamlist2cit -p ${ExpName}_${MapMethod}.bamlist 
 fi
 
-if [ "${Set}" = "Nuc" ] 
+
+if [ "${Set}" = "Nuc" ] && [ "${use}" = "double" ]
+then
+# Run GS ***** Nuc
+mkdir GS_${ExpName}_${MapMethod}_lenient_modeAll
+gedi -e Slam -allGenes -full -lenient -double -nthreads 4 -mode All -genomic $genomeIndex -prefix GS_${ExpName}_${MapMethod}_lenient_modeAll/${ExpName}_${MapMethod}_lenient_modeAll -progress -strandness Sense -D -snpConv 0.4 -trim5p 10 -trim3p 5 -reads ${ExpName}_${MapMethod}.bamlist.cit
+
+elif [ "${Set}" = "Nuc" ] && [[ "${ExpName}" == *"CTtoTCandTCtoCT"* ]] # then change default conversion for errlm
+then
+# Run GS ***** Nuc
+mkdir GS_${ExpName}_${MapMethod}_lenient_modeAll
+gedi -e Slam -allGenes -full -lenient -nthreads 4 -mode All -genomic $genomeIndex -prefix GS_${ExpName}_${MapMethod}_lenient_modeAll/${ExpName}_${MapMethod}_lenient_modeAll -progress -strandness Sense -D -snpConv 0.4 -errlm GC -errlm2 GC -trim5p 10 -trim3p 5 -reads ${ExpName}_${MapMethod}.bamlist.cit
+
+elif [ "${Set}" = "Nuc" ] 
 then
 # Run GS ***** Nuc
 mkdir GS_${ExpName}_${MapMethod}_lenient_modeAll
 gedi -e Slam -allGenes -full -lenient -nthreads 4 -mode All -genomic $genomeIndex -prefix GS_${ExpName}_${MapMethod}_lenient_modeAll/${ExpName}_${MapMethod}_lenient_modeAll -progress -strandness Sense -D -snpConv 0.4 -trim5p 10 -trim3p 5 -reads ${ExpName}_${MapMethod}.bamlist.cit
+
 
 elif [ "${Set}" = "NucRates" ]
 then
 
 # Run GS on modeled rates ***** Nuc
 gedi -e Slam -allGenes -full -lenient -nthreads 4 -mode All -genomic $genomeIndex -prefix GS_${ExpName}_${MapMethod}_lenient_modeAll_${dirName}/${ExpName}_${MapMethod}_lenient_modeAll -progress -strandness Sense -D -snpConv 0.4 -trim5p 10 -trim3p 5 -reads ${ExpName}_${MapMethod}.bamlist.cit
+
+elif [ "${Set}" = "NucRates" ] && [ "${use}" = "double" ]
+then
+
+# Run GS on modeled rates ***** Nuc
+gedi -e Slam -allGenes -full -lenient -double -nthreads 4 -mode All -genomic $genomeIndex -prefix GS_${ExpName}_${MapMethod}_lenient_modeAll_${dirName}/${ExpName}_${MapMethod}_lenient_modeAll -progress -strandness Sense -D -snpConv 0.4 -trim5p 10 -trim3p 5 -reads ${ExpName}_${MapMethod}.bamlist.cit
 
 elif [ "${Set}" = "MT" ]
 then
