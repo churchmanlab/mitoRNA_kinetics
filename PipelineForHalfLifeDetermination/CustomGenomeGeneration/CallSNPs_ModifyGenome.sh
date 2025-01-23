@@ -5,7 +5,7 @@
 #SBATCH -p medium
 #SBATCH --mem=50G
 #SBATCH --mail-type=FAIL
-#SBATCH --mail-user=mtcouvi@gmail.com
+#SBATCH --mail-user=name@gmail.com
 #SBATCH -e logs/CallSNPs_ModifyGenome_%j.err
 #SBATCH -o logs/CallSNPs_ModifyGenome_%j.log
 
@@ -192,14 +192,14 @@ sed -i 's/:/ /' $out1fasta
 
 
 # Filter by indel quality, proximity to each other, and length, and add PASS to FILTER column for rf2m to read line (number is quality filter cutoff for PASS, output filename ends in '.QUALfilt${qual}.vcf')
-python /n/groups/churchman/mc348/TimelapseSeq/Scripts/ParseAndPASSlabelVCF_v2.py ${Celline}_${MapMethod}_snpcalls.INDELonly.vcf $qual2 ${AFcutoff}
+python ParseAndPASSlabelVCF_v2.py ${Celline}_${MapMethod}_snpcalls.INDELonly.vcf $qual2 ${AFcutoff}
 
 # Using rf2m to make a new fasta and gtf together, ***including indels***
 module load perl/5.30.0
 
-/n/groups/churchman/mc348/programs/rf2m-master/format_vcf.pl --vcf ${Celline}_${MapMethod}_snpcalls.INDELonly.QUALfilt${qual2}.vcf
+rf2m-master/format_vcf.pl --vcf ${Celline}_${MapMethod}_snpcalls.INDELonly.QUALfilt${qual2}.vcf
 
-/n/groups/churchman/mc348/programs/rf2m-master/genome_creator_corrected.pl --genome $out1fasta --outGenome $out2fasta      ### Had to modify the genome_creator.pl script to 
+rf2m-master/genome_creator_corrected.pl --genome $out1fasta --outGenome $out2fasta      ### Had to modify the genome_creator.pl script to 
 # 1. read gencode fasta (originally written for ensembl fasta:  $header =~ m/^(.+) dna/; >  $header =~ m/^(.+) 1-/;
 # 2. Exit loop if a base has already been changed in the gatk step above, otherwise this creates an offset in the gtf later (line 71: next > last)
 
